@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/actors/props/access_door.gd" id="1_door"]
+[ext_resource type="Texture2D" path="res://assets/tiles/office_placeholder.png" id="2_tiles"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_door"]
+atlas = ExtResource("2_tiles")
+region = Rect2(112, 0, 16, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door"]
+size = Vector2(16, 16)
+
+[node name="AccessDoor" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_door")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = SubResource("AtlasTexture_door")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_door")
+
+[node name="Blocker" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Blocker"]
+shape = SubResource("RectangleShape2D_door")

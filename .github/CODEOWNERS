@@ -1,0 +1,31 @@
+# Кто за какие файлы отвечает. GitHub сам позовёт владельца в pull request.
+#
+# Это не запрет трогать чужое: помогать друг другу можно и нужно (docs/roles.md).
+# Это ответ на вопрос «кого спрашивать, если сломалось» — и напоминание о правиле,
+# которое дороже всего нарушить: у каждой сцены .tscn один владелец, потому что
+# Git мирит сцены Godot плохо.
+#
+# Замените заглушки на реальные ники GitHub при первом же push.
+
+# Всё, что не перечислено ниже
+*                           @lead
+
+# Игровая логика
+/src/autoload/              @lead
+/src/core/                  @lead
+/src/actors/                @lead
+/src/main.gd                @lead
+/src/main.tscn              @lead
+/tests/                     @lead
+
+# Данные, интерфейс, сборка
+/src/autoload/game_data.gd  @artist
+/src/autoload/save_game.gd  @artist
+/src/ui/                    @artist
+/assets/                    @artist
+
+# Карта офиса
+/src/levels/                @level-designer
+
+# Легенда компании и тексты
+/data/                      @writer

@@ -1,0 +1,147 @@
+{
+  "_комментарий": "ВРЕМЕННЫЕ ДАННЫЕ. Владелец файла — writer. Формат и список действий — docs/data-format.md.",
+
+  "dialogues": [
+    {
+      "id": "dlg_mironova",
+      "speaker": "emp_mironova",
+      "start": "greet",
+      "teaches": ["topic_vacation"],
+      "nodes": {
+        "greet": {
+          "text": "Так, новенький. Меня зовут Елена, отдел кадров. Пропуск, отпуск, обучение — это всё ко мне.",
+          "next": "offer"
+        },
+        "offer": {
+          "text": "Начнём с простого: забери со стола папку с документами, потом сходи к Артёму Киму за ноутбуком. Он в ИТ-отделе.",
+          "choices": [
+            {
+              "text": "Понял, иду.",
+              "next": "bye",
+              "requires": { "not_flag": "onboarding_taken" },
+              "effects": [
+                { "type": "start_quest", "quest": "q_onboarding" },
+                { "type": "set_flag", "flag": "onboarding_taken" }
+              ]
+            },
+            { "text": "А где ИТ-отдел?", "next": "where_it" },
+            { "text": "Уже занимаюсь.", "next": "bye", "requires": { "flag": "onboarding_taken" } }
+          ]
+        },
+        "where_it": {
+          "text": "По коридору направо, дверь с табличкой. Там Дмитрий Соколов — он руководитель, и Артём — системный администратор.",
+          "next": "offer"
+        },
+        "bye": { "text": "Появятся вопросы про отпуск или документы — заходи.", "next": "end" }
+      }
+    },
+
+    {
+      "id": "dlg_kim",
+      "speaker": "emp_kim",
+      "start": "greet",
+      "teaches": ["topic_laptop"],
+      "nodes": {
+        "greet": {
+          "text": "Привет. Артём, системный администратор. Если техника перестала работать — это сразу ко мне, не к Дмитрию.",
+          "choices": [
+            {
+              "text": "Меня прислала Елена за ноутбуком.",
+              "next": "give",
+              "requires": { "quest_active": "q_onboarding" },
+              "effects": [
+                { "type": "complete_objective", "quest": "q_onboarding", "objective": "obj_laptop" }
+              ]
+            },
+            { "text": "Просто знакомлюсь.", "next": "bye" }
+          ]
+        },
+        "give": {
+          "text": "Держи. Пропуск я тебе поднял до второго уровня — дирекция теперь открыта.",
+          "next": "bye"
+        },
+        "bye": { "text": "Что-то сломалось — пиши сразу, не жди.", "next": "end" }
+      }
+    },
+
+    {
+      "id": "dlg_pavlov",
+      "speaker": "emp_pavlov",
+      "kind": "duel",
+      "patience": 3,
+      "time_limit": 10.0,
+      "on_wrong": "again",
+      "start": "challenge",
+      "nodes": {
+        "challenge": {
+          "text": "Новенький? Отлично. Вопрос на пять секунд: клиент просит скидку сверх регламента. Твои действия?",
+          "choices": [
+            { "text": "Согласую с вами — вы руководитель отдела продаж.", "next": "ok", "correct": true,
+              "effects": [ { "type": "start_quest", "quest": "q_first_task" } ] },
+            { "text": "Дам скидку, клиент же просит." },
+            { "text": "Отправлю клиента в бухгалтерию." }
+          ]
+        },
+        "again": {
+          "text": "Мимо. Ещё раз: кто в этой компании отвечает за условия договора с клиентом?",
+          "choices": [
+            { "text": "Вы, отдел продаж.", "next": "ok", "correct": true,
+              "effects": [ { "type": "start_quest", "quest": "q_first_task" } ] },
+            { "text": "Финансовый отдел." }
+          ]
+        },
+        "ok": {
+          "text": "Годится. Тогда первое поручение: узнай у Ольги Зайцевой, как у нас оплачивают счёт подрядчику.",
+          "next": "end"
+        }
+      }
+    },
+
+    {
+      "id": "dlg_zaytseva",
+      "speaker": "emp_zaytseva",
+      "start": "greet",
+      "nodes": {
+        "greet": {
+          "text": "Ольга Зайцева, главный бухгалтер. Счета, оплаты, командировочные — это сюда.",
+          "choices": [
+            {
+              "text": "Игорь просил узнать, как оплачивают счёт подрядчику.",
+              "next": "explain",
+              "requires": { "quest_active": "q_first_task" },
+              "effects": [
+                { "type": "complete_objective", "quest": "q_first_task", "objective": "obj_ask_finance" }
+              ]
+            },
+            { "text": "Просто знакомлюсь.", "next": "bye" }
+          ]
+        },
+        "explain": {
+          "text": "Счёт визирует руководитель отдела, который его заказал, потом он идёт ко мне. Без визы не оплачиваю — и это не вредность.",
+          "next": "bye"
+        },
+        "bye": { "text": "Появится счёт — приходи.", "next": "end" }
+      }
+    },
+
+    {
+      "id": "dlg_koroleva",
+      "speaker": "emp_koroleva",
+      "start": "greet",
+      "teaches": ["topic_strategy"],
+      "nodes": {
+        "greet": {
+          "text": "Анна Королёва, генеральный директор. Куда компания идёт в этом году — решается здесь.",
+          "choices": [
+            { "text": "Я новый сотрудник, зашёл представиться.", "next": "finish" }
+          ]
+        },
+        "finish": {
+          "text": "Добро пожаловать в «Меридиан». Считай, что первый день прошёл.",
+          "next": "end",
+          "effects": [ { "type": "finish_game" } ]
+        }
+      }
+    }
+  ]
+}

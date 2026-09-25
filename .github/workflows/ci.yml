@@ -1,0 +1,42 @@
+name: Проверка проекта
+
+# Зачем это есть. В команде три человека без опыта разработки, и самая частая
+# поломка — не «плохой код», а забытая запятая в JSON или ссылка на сотрудника,
+# которого переименовали. Такая поломка обнаруживается на демо, а не при правке.
+# CI переносит обнаружение на три минуты после push и никого не заставляет
+# ничего помнить.
+#
+# Красная галочка в pull request означает ровно одно: «в master это не попадёт,
+# пока не починим». Это не про строгость, это про то, чтобы у команды всегда
+# был запускаемый билд (правило 3 из docs/roadmap.md).
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Скачать Godot ${{ env.GODOT_VERSION }}
+        run: |
+          curl -sL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+      - name: Импорт ресурсов
+        run: godot --headless --import
+
+      - name: Проверка данных (data/*.json)
+        run: godot --headless --script tools/validate_data.gd
+
+      - name: Тесты
+        run: godot --headless res://tests/test_runner.tscn

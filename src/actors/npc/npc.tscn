@@ -1,0 +1,45 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/actors/npc/npc.gd" id="1_npc"]
+[ext_resource type="Texture2D" path="res://assets/sprites/person_placeholder.png" id="2_sprite"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_reach"]
+radius = 10.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_block"]
+size = Vector2(10, 6)
+
+[sub_resource type="LabelSettings" id="LabelSettings_caption"]
+font_size = 8
+outline_size = 3
+outline_color = Color(0.0784314, 0.101961, 0.145098, 1)
+
+[node name="Npc" type="Area2D"]
+y_sort_enabled = true
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_npc")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_sprite")
+hframes = 4
+vframes = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_reach")
+
+[node name="Blocker" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Blocker"]
+position = Vector2(0, 5)
+shape = SubResource("RectangleShape2D_block")
+
+[node name="Caption" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -22.0
+offset_right = 40.0
+offset_bottom = -8.0
+horizontal_alignment = 1
+label_settings = SubResource("LabelSettings_caption")

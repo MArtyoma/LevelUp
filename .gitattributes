@@ -1,0 +1,17 @@
+# Сцены и ресурсы Godot — текст, но Git мирит их из рук вон плохо.
+# union/merge здесь только портит файл, поэтому конфликт решается руками,
+# а лучше не допускается вовсе: у каждой сцены один владелец (docs/conventions.md).
+*.tscn  text eol=lf -merge
+*.tres  text eol=lf -merge
+*.godot text eol=lf -merge
+
+*.gd    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.cfg   text eol=lf
+*.yml   text eol=lf
+
+*.png   binary
+*.ogg   binary
+*.wav   binary
+*.ttf   binary

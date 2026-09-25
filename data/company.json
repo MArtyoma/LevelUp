@@ -1,0 +1,36 @@
+{
+  "_комментарий": "ВРЕМЕННЫЕ ДАННЫЕ. Владелец файла — writer. Заменить на настоящую легенду (D-005). Формат описан в docs/data-format.md. Проверка: godot --headless --script tools/validate_data.gd",
+
+  "company": {
+    "id": "meridian",
+    "name": "«Меридиан»",
+    "field": "проектирование и монтаж инженерных систем",
+    "legend": "Компания на 60 человек, один этаж в бизнес-центре. Заглушка: writer заменит на настоящую легенду."
+  },
+
+  "departments": [
+    { "id": "dept_admin",   "name": "Дирекция",        "head": "emp_koroleva", "room": "room_admin",   "purpose": "Решает, куда компания идёт в ближайший год." },
+    { "id": "dept_hr",      "name": "Отдел кадров",    "head": "emp_mironova", "room": "room_hr",      "purpose": "Оформление, пропуска, отпуска, обучение." },
+    { "id": "dept_sales",   "name": "Отдел продаж",    "head": "emp_pavlov",   "room": "room_sales",   "purpose": "Клиенты, договоры, коммерческие предложения." },
+    { "id": "dept_it",      "name": "ИТ-отдел",        "head": "emp_sokolov",  "room": "room_it",      "purpose": "Техника, доступы, всё, что перестало работать." },
+    { "id": "dept_finance", "name": "Финансовый отдел","head": "emp_zaytseva", "room": "room_finance", "purpose": "Счета, оплаты, командировочные." }
+  ],
+
+  "employees": [
+    { "id": "emp_koroleva", "name": "Анна Королёва",   "role": "генеральный директор",       "department": "dept_admin",   "reports_to": "",             "palette": "#f6ad55" },
+    { "id": "emp_mironova", "name": "Елена Миронова",  "role": "руководитель отдела кадров", "department": "dept_hr",      "reports_to": "emp_koroleva", "palette": "#68d391" },
+    { "id": "emp_pavlov",   "name": "Игорь Павлов",    "role": "руководитель отдела продаж", "department": "dept_sales",   "reports_to": "emp_koroleva", "palette": "#fc8181" },
+    { "id": "emp_sokolov",  "name": "Дмитрий Соколов", "role": "руководитель ИТ-отдела",     "department": "dept_it",      "reports_to": "emp_koroleva", "palette": "#63b3ed" },
+    { "id": "emp_zaytseva", "name": "Ольга Зайцева",   "role": "главный бухгалтер",          "department": "dept_finance", "reports_to": "emp_koroleva", "palette": "#d6bcfa" },
+    { "id": "emp_kim",      "name": "Артём Ким",       "role": "системный администратор",    "department": "dept_it",      "reports_to": "emp_sokolov",  "palette": "#90cdf4" }
+  ],
+
+  "topics": [
+    { "id": "topic_pass",     "title": "пропуск и доступ в помещения", "question": "К кому идти, чтобы получить пропуск в закрытую зону?",        "owner": "emp_mironova" },
+    { "id": "topic_vacation", "title": "отпуск",                       "question": "К кому идти, чтобы оформить отпуск?",                         "owner": "emp_mironova" },
+    { "id": "topic_contract", "title": "договор с клиентом",           "question": "Кто отвечает за договор с новым клиентом?",                   "owner": "emp_pavlov" },
+    { "id": "topic_invoice",  "title": "оплата счёта",                 "question": "К кому идти, чтобы оплатили счёт подрядчику?",                "owner": "emp_zaytseva" },
+    { "id": "topic_laptop",   "title": "не работает техника",          "question": "К кому идти, если не включается рабочий ноутбук?",            "owner": "emp_kim" },
+    { "id": "topic_strategy", "title": "планы компании",               "question": "Кто решает, какими направлениями компания займётся в году?",  "owner": "emp_koroleva" }
+  ]
+}
