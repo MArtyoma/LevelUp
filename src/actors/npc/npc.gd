@@ -44,6 +44,10 @@ extends Area2D
 
 var _employee: Dictionary = {}
 
+## «Дыхание»: раз в столько секунд — следующий кадр первого ряда листа
+## (tools/art/make_sheet.py --idle: вдох — один кадр из четырёх).
+const IDLE_STEP_SECONDS := 0.45
+
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -117,6 +121,7 @@ func _refresh() -> void:
 	if own != null:
 		_sprite.texture = own
 		_sprite.modulate = Color.WHITE
+		_start_idle()
 	elif _employee.has("palette"):
 		_sprite.modulate = Color(String(_employee["palette"]))
 
@@ -148,3 +153,19 @@ func _get_configuration_warnings() -> PackedStringArray:
 			return PackedStringArray()
 	return PackedStringArray([
 		"В data/company.json нет сотрудника '%s'. Опечатка в id?" % employee_id])
+
+
+## Кадры листает таймер, а не _process: NPC по-прежнему ничего не делает каждый
+## кадр. Темп у каждого чуть свой (из id), иначе шесть человек дышат хором.
+## Только у своего рисунка: общий спрайт — лист ходьбы, и в нём NPC шагал бы на месте.
+func _start_idle() -> void:
+	if get_node_or_null("IdleTimer") != null:
+		return
+	var timer := Timer.new()
+	timer.name = "IdleTimer"
+	var spread := float(absi(employee_id.hash()) % 100) / 100.0
+	timer.wait_time = IDLE_STEP_SECONDS * lerpf(0.85, 1.2, spread)
+	timer.timeout.connect(func():
+		_sprite.frame_coords.x = (_sprite.frame_coords.x + 1) % _sprite.hframes)
+	add_child(timer)
+	timer.start()
