@@ -35,6 +35,9 @@ extends Area2D
 @export var show_caption: bool = true
 
 @onready var _sprite: Sprite2D = $Sprite2D
+# У подписи z_index = 1 (в сцене): NPC сортируется по Y, и подпись над головой
+# сортировалась бы по своей Y — как предмет на 2 тайла выше. Её закрывали бы
+# стены, мебель и подошедший снизу игрок.
 @onready var _caption: Label = $Caption
 @onready var _reach_shape: CollisionShape2D = $CollisionShape2D
 @onready var _blocker_shape: CollisionShape2D = $Blocker/CollisionShape2D
@@ -106,9 +109,15 @@ func _refresh() -> void:
 		_caption.text = "?"
 		return
 
-	# Один спрайт на всех, цвет — из данных. Это и есть «смена палитры»,
-	# о которой договорилась команда: пятнадцать разных сотрудников без пятнадцати рисунков.
-	if _employee.has("palette"):
+	# Свой рисунок сотрудника, если он есть (см. src/core/own_art.gd).
+	# Нет — общий спрайт с цветом из данных. Это и есть
+	# «смена палитры», о которой договорилась команда: пятнадцать разных
+	# сотрудников без пятнадцати рисунков.
+	var own := OwnArt.sprite(employee_id)
+	if own != null:
+		_sprite.texture = own
+		_sprite.modulate = Color.WHITE
+	elif _employee.has("palette"):
 		_sprite.modulate = Color(String(_employee["palette"]))
 
 	_caption.text = String(_employee.get("name", ""))

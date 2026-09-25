@@ -61,8 +61,16 @@ func _initialize() -> void:
 	_root.name = "OfficeDemo"
 	_root.y_sort_enabled = true
 
-	_ground = _make_layer("Ground", tile_set, 0)
-	_walls = _make_layer("Walls", tile_set, 1)
+	_ground = _make_layer("Ground", tile_set)
+	# Пол — всегда под всем. В сортировке по Y он стоит на строке 0, и всё, что
+	# выше неё (например, подпись над NPC в верхнем ряду), ушло бы под пол.
+	_ground.z_index = -1
+	_walls = _make_layer("Walls", tile_set)
+	# Стены и мебель сортируются по Y вместе с людьми: кто ниже на экране, тот
+	# рисуется поверх. Иначе голова персонажа 16x32 уходит под стол или стену.
+	_walls.y_sort_enabled = true
+	_walls.set_script(load("res://src/levels/wall_faces.gd"))
+	_walls.set("ground", _ground)
 
 	_fill_with_walls()
 	_carve(CORRIDOR, T_FLOOR)
@@ -81,11 +89,10 @@ func _initialize() -> void:
 	quit(0)
 
 
-func _make_layer(layer_name: String, tile_set: TileSet, z: int) -> TileMapLayer:
+func _make_layer(layer_name: String, tile_set: TileSet) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.name = layer_name
 	layer.tile_set = tile_set
-	layer.z_index = z
 	_root.add_child(layer)
 	layer.owner = _root
 	return layer
@@ -172,6 +179,7 @@ func _add_quest_object(cell: Vector2i) -> void:
 	object.position = _center_of(cell)
 	object.set("quest_id", "q_onboarding")
 	object.set("objective_id", "obj_docs")
+	object.set("atlas_cell", Vector2i(5, 1))
 	object.set("prompt", "E — забрать папку с документами")
 	_root.add_child(object)
 	object.owner = _root

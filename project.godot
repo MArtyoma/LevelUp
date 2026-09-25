@@ -111,7 +111,7 @@ toggle_quests={
 
 grid/tile_size=16
 grid/character_frame_width=16
-grid/character_frame_height=16
+grid/character_frame_height=32
 grid/walk_frames=4
 grid/visible_tiles_x=30
 grid/visible_tiles_y=17

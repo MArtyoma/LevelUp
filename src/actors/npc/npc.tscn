@@ -37,6 +37,7 @@ position = Vector2(0, 5)
 shape = SubResource("RectangleShape2D_block")
 
 [node name="Caption" type="Label" parent="."]
+z_index = 1
 offset_left = -40.0
 offset_top = -22.0
 offset_right = 40.0

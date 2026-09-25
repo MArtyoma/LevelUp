@@ -30,6 +30,9 @@ const TILES := [
 	{ "cell": Vector2i(1, 1), "name": "кулер",     "solid": Vector2(0.5, 0.875) },
 	{ "cell": Vector2i(2, 1), "name": "принтер",   "solid": Vector2(0.875, 0.5) },
 	{ "cell": Vector2i(3, 1), "name": "ковёр",     "solid": Vector2.ZERO },
+	{ "cell": Vector2i(4, 1), "name": "коробка",   "solid": Vector2.ZERO },
+	{ "cell": Vector2i(5, 1), "name": "папка",     "solid": Vector2.ZERO },
+	{ "cell": Vector2i(6, 1), "name": "лицо стены","solid": Vector2(1.0, 1.0) },
 ]
 
 

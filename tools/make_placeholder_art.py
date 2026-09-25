@@ -17,7 +17,8 @@
 Требует: pip install Pillow
 
 Что получается:
-  assets/tiles/office_placeholder.png    атлас 8 колонок x 2 ряда
+  assets/tiles/office_placeholder.png    атлас 8 колонок x 2 ряда — только с --tiles.
+                                         Обычный атлас рисует tools/art/draw_tiles.py
   assets/sprites/person_placeholder.png  лист: кадры ходьбы x 4 направления,
                                          ряды сверху вниз — вниз, влево, вправо, вверх
 """
@@ -250,6 +251,9 @@ def main() -> None:
                         help="размер кадра человека, например 16x32")
     parser.add_argument("--frames", type=int, default=grid["walk_frames"],
                         help="кадров в цикле ходьбы")
+    parser.add_argument("--tiles", action="store_true",
+                        help="перерисовать и атлас тайлов — серыми квадратами. Обычно не нужно: "
+                             "атлас рисует tools/art/draw_tiles.py, и этот флаг его затрёт")
     args = parser.parse_args()
 
     frame_w, _, frame_h = args.char.partition("x")
@@ -257,15 +261,17 @@ def main() -> None:
 
     OUT_TILES.parent.mkdir(parents=True, exist_ok=True)
     OUT_PERSON.parent.mkdir(parents=True, exist_ok=True)
-    make_tileset(args.tile).save(OUT_TILES)
     make_person(frame_w, frame_h, args.frames).save(OUT_PERSON)
 
     print("Заглушки перерисованы:")
-    print("  %s — тайл %dx%d, атлас %dx%d"
-          % (OUT_TILES.relative_to(GAME), args.tile, args.tile, args.tile * 8, args.tile * 2))
+    if args.tiles:
+        make_tileset(args.tile).save(OUT_TILES)
+        print("  %s — тайл %dx%d, атлас %dx%d"
+              % (OUT_TILES.relative_to(GAME), args.tile, args.tile, args.tile * 8, args.tile * 2))
     print("  %s — кадр %dx%d, %d кадров ходьбы x 4 направления"
           % (OUT_PERSON.relative_to(GAME), frame_w, frame_h, args.frames))
-    print("\nДальше: godot --headless --script tools/build_tileset.gd")
+    if args.tiles:
+        print("\nДальше: godot --headless --script tools/build_tileset.gd")
 
 
 if __name__ == "__main__":
