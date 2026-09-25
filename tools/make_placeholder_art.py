@@ -39,7 +39,7 @@ OUT_PERSON = GAME / "assets/sprites/person_placeholder.png"
 BASE_TILE = 16
 
 # Ограниченная палитра — та самая дисциплина, которая экономит недели
-# (см. docs/roles.md в репозитории документации).
+# (решение команды: палитра 16–24 цвета, один файл).
 PALETTE = {
     "carpet":     (74, 85, 104),
     "carpet_dot": (85, 96, 115),
@@ -186,7 +186,7 @@ def make_person(frame_w: int, frame_h: int, frames: int) -> Image.Image:
     32x64 получаются одним и тем же кодом. Спрайт нарочно почти серый: цвет
     сотрудника задаётся в data/company.json полем "palette" и накладывается
     движком через modulate. Это приём «один базовый спрайт + смена палитры =
-    пятнадцать разных людей» из docs/roles.md.
+    пятнадцать разных людей» — так договорилась команда.
     """
     img = Image.new("RGBA", (frame_w * frames, frame_h * 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
