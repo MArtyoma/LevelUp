@@ -45,11 +45,15 @@ var _reachable: Array[Node2D] = []
 var _current_target: Node2D = null
 var _animation_time: float = 0.0
 
+# Слои тайлов уровня, верхний первым: по ним узнаём, по чему идём (звук шага).
+var _floor_layers: Array[TileMapLayer] = []
+
 
 func _ready() -> void:
 	_apply_grid()
 	_interaction_area.area_entered.connect(_on_reachable_entered)
 	_interaction_area.area_exited.connect(_on_reachable_exited)
+	_find_floor_layers()
 
 
 ## Подгоняет всё под текущий размер тайла (см. `src/core/grid.gd`).
@@ -193,8 +197,39 @@ func _animate(direction: Vector2, delta: float) -> void:
 		_set_frame(0)
 		return
 	_animation_time += delta * ANIMATION_FPS
-	_set_frame(int(_animation_time) % _sprite.hframes)
+	var column := int(_animation_time) % _sprite.hframes
+	# В листе нога поднята в нечётных кадрах; шаг слышен, когда она опускается.
+	if column != _sprite.frame_coords.x and column % 2 == 0:
+		Sound.footstep(surface_under_feet())
+	_set_frame(column)
 
 
 func _set_frame(column: int) -> void:
 	_sprite.frame_coords.x = column
+
+
+# --- Звук шагов ---------------------------------------------------------------
+
+## Уровень добавлен в мир раньше игрока (src/main.gd), так что слои уже на месте.
+## Нужны только те, у тайлсета которых есть слой данных `surface`
+## (tools/build_tileset.gd): level designer для новой карты ничего настраивать не надо.
+func _find_floor_layers() -> void:
+	var world := get_parent()
+	if world == null:
+		return
+	for node in world.find_children("*", "TileMapLayer", true, false):
+		var layer := node as TileMapLayer
+		if layer.tile_set != null and layer.tile_set.has_custom_data_layer_by_name("surface"):
+			_floor_layers.push_front(layer)
+
+
+## По чему стоит игрок: "carpet", "tile" или "" (не знаем — звучит ковролин).
+func surface_under_feet() -> String:
+	for layer in _floor_layers:
+		var data := layer.get_cell_tile_data(layer.local_to_map(layer.to_local(global_position)))
+		if data == null:
+			continue
+		var surface := String(data.get_custom_data("surface"))
+		if not surface.is_empty():
+			return surface
+	return ""

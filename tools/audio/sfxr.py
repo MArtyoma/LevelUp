@@ -390,6 +390,8 @@ def main():
     name = a.name or a.preset or Path(a.params).stem
     out = GAME / a.out / name
     out.mkdir(parents=True, exist_ok=True)
+    # Godot не должен импортировать черновики: иначе он тащит их в .godot/ и плодит .import.
+    (out.parent / ".gdignore").touch()
 
     if a.params:
         p = json.loads(Path(a.params).read_text(encoding="utf-8"))

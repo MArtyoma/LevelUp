@@ -110,11 +110,17 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 		# пиксельный шрифт темой, эту строку можно убрать.
 		button.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
 		var index := int(choice["index"])
-		button.pressed.connect(func(): DialogueRunner.choose(index))
+		button.pressed.connect(func():
+			Sound.play("ui_confirm")
+			DialogueRunner.choose(index))
 		_choices.add_child(button)
 
 	if _choices.get_child_count() > 0:
 		_choices.get_child(0).grab_focus()
+	# Щелчок при переходе между вариантами — только после первого фокуса:
+	# сам факт появления вариантов не должен щёлкать поверх голоса собеседника.
+	for button in _choices.get_children():
+		(button as Button).focus_entered.connect(Sound.play.bind("ui_select"))
 
 	if time_limit > 0.0:
 		_start_timer(time_limit)

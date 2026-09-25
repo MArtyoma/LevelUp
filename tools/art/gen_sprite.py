@@ -235,6 +235,8 @@ def main():
 
     out = GAME / a.out / a.name
     out.mkdir(parents=True, exist_ok=True)
+    # Godot не должен импортировать черновики: иначе он тащит их в .godot/ и плодит .import.
+    (out.parent / ".gdignore").touch()
     ensure_up()
     ref_name = upload(a.ref) if a.ref else None
     graph = build_graph(prompt, seed, max(1, min(8, a.count)), pixelize.parse_size(a.gen_size),

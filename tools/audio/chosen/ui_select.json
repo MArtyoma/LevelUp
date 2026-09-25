@@ -1,0 +1,11 @@
+{
+ "wave_type": 2,
+ "duty": 0.5,
+ "base_freq": 0.4801698347849004,
+ "env_sustain": 0.06952803419119562,
+ "env_decay": 0.08434617720005257,
+ "hpf_freq": 0.1,
+ "volume": 0.35,
+ "_preset": "select",
+ "_seed": 7
+}

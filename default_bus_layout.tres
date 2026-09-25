@@ -1,0 +1,20 @@
+[gd_resource type="AudioBusLayout" format=3]
+
+; Шины звука. Общая громкость музыки и звуков — здесь (или в редакторе:
+; нижняя панель Audio). Громкость отдельных звуков — src/autoload/sound.gd, VOLUME_DB.
+; Музыка сведена на -16 LUFS (tools/audio/gen_audio.py) — это громко для фона,
+; поэтому шина Music тише нуля.
+
+[resource]
+bus/1/name = &"Music"
+bus/1/solo = false
+bus/1/mute = false
+bus/1/bypass_fx = false
+bus/1/volume_db = -12.0
+bus/1/send = &"Master"
+bus/2/name = &"SFX"
+bus/2/solo = false
+bus/2/mute = false
+bus/2/bypass_fx = false
+bus/2/volume_db = 0.0
+bus/2/send = &"Master"

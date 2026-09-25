@@ -17,6 +17,7 @@ func _initialize() -> void:
 		"move_right":    [KEY_D, KEY_RIGHT],
 		"interact":      [KEY_E, KEY_SPACE, KEY_ENTER],
 		"toggle_quests": [KEY_J, KEY_TAB],
+		"toggle_mute":   [KEY_M],
 	}
 
 	for action_name: String in actions:

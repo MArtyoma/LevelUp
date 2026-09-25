@@ -1,0 +1,9 @@
+{
+ "wave_type": 1,
+ "base_freq": 0.5791461442436253,
+ "env_sustain": 0.13948234964231737,
+ "env_decay": 0.00965728472536247,
+ "hpf_freq": 0.1,
+ "_preset": "blip",
+ "_seed": 7
+}

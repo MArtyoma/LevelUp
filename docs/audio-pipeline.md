@@ -57,6 +57,46 @@ python3 tools/audio/gen_audio.py bgm_office "calm lo-fi office background music,
 Прошедшие проверку варианты показывайте человеку **на прослушивание**, прямо называя это:
 «звук сгенерирован, на слух не проверен». В `assets/` звук кладёт только человек.
 
+## Что уже в игре (25.09.2026, черновики)
+
+Всё ниже — `_placeholder`, **на слух не проверено**: выбрано по спектрограммам и цифрам.
+Послушать и заменить — дело artist: свой `quest_done.wav` рядом с черновиком сразу
+играет вместо него (как это устроено — `docs/architecture.md`, раздел «Звук»).
+
+| Файл в `assets/` | Когда звучит | Откуда |
+|---|---|---|
+| `sfx/talk` | реплика собеседника (высота — своя у каждого) | sfxr `talk` |
+| `sfx/ui_select`, `ui_confirm` | переход между вариантами ответа, выбор | sfxr `select`, `confirm` |
+| `sfx/ui_cancel` | разговор прерван (Esc) | sfxr `cancel` |
+| `sfx/journal` | открыть/закрыть журнал | sfxr `blip` |
+| `sfx/door_denied` | пропуск не открывает дверь | sfxr `cancel` |
+| `sfx/objective` | выполнена цель квеста | sfxr `pickup` |
+| `sfx/quest_new`, `quest_done` | квест выдан, квест выполнен | sfxr, мелодии `newquest`, `questdone` |
+| `sfx/access_up` | новый уровень пропуска | sfxr `powerup` |
+| `sfx/duel_miss`, `duel_lost` | промах в дуэли, дуэль проиграна | sfxr `hit`, мелодия `fail` |
+| `sfx/step_carpet_0..3` | шаг по ковролину | Stable Audio, `steps_carpet2` (зерно 42) и `steps_carpet` (зерно 5), нарезка `slice_steps.py --dur 0.16` |
+| `sfx/step_tile_0..3` | шаг по плитке коридора | Stable Audio, `steps_tile` (зерно 41), `slice_steps.py --dur 0.13` |
+| `music/office` | всё время, петля 93 с | `sa-music`, зерно 31, вариант 00 — промпт ниже |
+| `music/duel` | дуэль с руководителем | `sa-music`, зерно 32, вариант 01 |
+
+Параметры писков sfxr лежат в `tools/audio/chosen/<имя>.json`, пересборка байт в байт:
+`python3 tools/audio/sfxr.py --params tools/audio/chosen/talk.json --name talk`.
+
+Промпты музыки: офис — *calm cheerful lo-fi office background music, soft electric piano
+chords, light brushed drums, warm bass, instrumental, friendly and focused, 90 BPM*
+(`--seconds 95 --loop --negative "vocals, speech"`); дуэль — *tense but playful
+chiptune-flavored boss negotiation music, pulsing synth bass, ticking hi-hat, staccato
+strings, instrumental, 120 BPM* (`--seconds 60 --loop`). Варианты выбраны те, у которых
+на спектрограмме ровная картина от начала до конца: у отброшенных — вступление или
+затухание, петля с ними «проваливается».
+
+**Что узнали по дороге:**
+- **Шаги генерируются серией, не по одному.** На «a single footstep» Stable Audio
+  отдаёт щелчок 0,04 с; на «footsteps walking slowly…, even pace» — чистую серию, которую
+  режет `tools/audio/slice_steps.py`.
+- **Писки sfxr очень громкие** (средняя громкость −5…−10 dB против −20 у нейросети),
+  поэтому в `sound.gd` у них громкость −10…−18 dB.
+
 ## Требования
 
 - Python 3, Pillow и ffmpeg — системный или `pip install imageio-ffmpeg` (так и сделано на saturn).
@@ -92,6 +132,8 @@ python3 tools/audio/gen_audio.py bgm_office "calm lo-fi office background music,
 | `--negative` | пусто | Только Stable Audio: чего не должно быть (`vocals, speech`) |
 | `--lyrics` | `[Instrumental]` | ace/minimax: текст песни с тегами `[Verse]`, `[Chorus]` |
 | `--bpm`, `--key` | 90, `C major` | Только ace: темп и тональность |
+
+`slice_steps.py`: режет запись ходьбы на отдельные шаги — см. «Что уже в игре» и `--help`.
 
 `sfxr.py`: пресеты `pickup laser explosion powerup hit jump blip` (как в оригинальном sfxr)
 и `talk select confirm cancel footstep` (под нашу игру), мелодии `questdone newquest fail`.

@@ -58,6 +58,7 @@ func _apply_ui_scale() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_quests"):
 		_quest_panel.visible = not _quest_panel.visible
+		Sound.play("journal")
 		get_viewport().set_input_as_handled()
 
 

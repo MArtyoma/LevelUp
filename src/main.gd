@@ -43,6 +43,7 @@ func _ready() -> void:
 	player.global_position = _spawn_position(level)
 	_world.add_child(player)
 	_limit_camera_to_level(level, player)
+	Sound.play_music("office")
 
 	EventBus.game_finished.connect(_on_game_finished)
 	print("LevelUp: компания %s, данные из %s" % [

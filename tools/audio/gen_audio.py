@@ -269,6 +269,8 @@ def main():
 
     out = GAME / a.out / a.name
     out.mkdir(parents=True, exist_ok=True)
+    # Godot не должен импортировать черновики: иначе он тащит их в .godot/ и плодит .import.
+    (out.parent / ".gdignore").touch()
     comfy.ensure_up()
     print(f"генерирую {count} шт. по {seconds:g} с, {a.model}, зерно {seed}: {a.description}", file=sys.stderr)
     raws, secs = [], 0.0
