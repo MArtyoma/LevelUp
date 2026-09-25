@@ -24,17 +24,44 @@ const T_DESK := Vector2i(4, 0)
 const T_PLANT := Vector2i(6, 0)
 const T_CABINET := Vector2i(0, 1)
 const T_COOLER := Vector2i(1, 1)
+const T_BOX := Vector2i(4, 1)
+const T_SERVER := Vector2i(0, 2)
+const T_SAFE := Vector2i(1, 2)
+const T_COFFEE := Vector2i(2, 2)
+const T_GLOBE := Vector2i(3, 2)
+const T_BOOKSHELF := Vector2i(4, 2)
+const T_FLIPCHART := Vector2i(5, 2)
+const T_TROPHY := Vector2i(6, 2)
+const T_SOFA := Vector2i(7, 2)
+const T_NOTICE_BOARD := Vector2i(0, 3)
 
 ## Коридор: через него соединяются все кабинеты.
 const CORRIDOR := Rect2i(1, 7, 38, 3)
 
 ## Кабинеты. `door` — клетка в стене, которую нужно открыть.
+## `decor` — что стоит только в этом кабинете: клетка от левого верхнего угла
+## кабинета и тайл. Строка -1 — стена над кабинетом (там висит доска).
+## Зачем: игра учит, где какой отдел, и одинаковые кабинеты этому мешают —
+## «ИТ — где серверы, бухгалтерия — где сейф» запоминается с первого захода.
 const ROOMS := [
-	{ "id": "room_hr",      "rect": Rect2i(1, 1, 9, 5),   "door": Vector2i(5, 6) },
-	{ "id": "room_sales",   "rect": Rect2i(11, 1, 9, 5),  "door": Vector2i(15, 6) },
-	{ "id": "room_it",      "rect": Rect2i(21, 1, 8, 5),  "door": Vector2i(24, 6) },
-	{ "id": "room_admin",   "rect": Rect2i(30, 1, 9, 5),  "door": Vector2i(34, 6), "access": 2 },
-	{ "id": "room_finance", "rect": Rect2i(11, 11, 9, 5), "door": Vector2i(15, 10) },
+	{ "id": "room_hr",      "rect": Rect2i(1, 1, 9, 5),   "door": Vector2i(5, 6),
+		"decor": [[Vector2i(1, 0), T_BOOKSHELF], [Vector2i(2, 0), T_SOFA],
+			[Vector2i(6, -1), T_NOTICE_BOARD]] },
+	{ "id": "room_sales",   "rect": Rect2i(11, 1, 9, 5),  "door": Vector2i(15, 6),
+		"decor": [[Vector2i(2, 0), T_FLIPCHART], [Vector2i(6, 0), T_TROPHY]] },
+	{ "id": "room_it",      "rect": Rect2i(21, 1, 8, 5),  "door": Vector2i(24, 6),
+		"decor": [[Vector2i(1, 0), T_SERVER], [Vector2i(2, 0), T_SERVER],
+			[Vector2i(5, 4), T_BOX]] },
+	{ "id": "room_admin",   "rect": Rect2i(30, 1, 9, 5),  "door": Vector2i(34, 6), "access": 2,
+		"decor": [[Vector2i(1, 0), T_BOOKSHELF], [Vector2i(6, 0), T_GLOBE]] },
+	{ "id": "room_finance", "rect": Rect2i(11, 11, 9, 5), "door": Vector2i(15, 10),
+		"decor": [[Vector2i(1, 0), T_SAFE], [Vector2i(7, 4), T_BOOKSHELF]] },
+]
+
+## Коридор: кофемашина у стены и доска объявлений на стене между продажами и ИТ.
+const CORRIDOR_DECOR := [
+	[Vector2i(10, 7), T_COFFEE],
+	[Vector2i(20, 6), T_NOTICE_BOARD],
 ]
 
 ## Кто где сидит. id сотрудника — из data/company.json.
@@ -78,6 +105,10 @@ func _initialize() -> void:
 		_carve(room["rect"], T_CARPET)
 		_open_door(room["door"])
 		_furnish(room["rect"])
+		for item: Array in room.get("decor", []):
+			_walls.set_cell((room["rect"] as Rect2i).position + (item[0] as Vector2i), 0, item[1])
+	for item: Array in CORRIDOR_DECOR:
+		_walls.set_cell(item[0], 0, item[1])
 
 	_add_access_doors()
 	_add_room_triggers()

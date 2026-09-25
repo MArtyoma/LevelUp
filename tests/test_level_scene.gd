@@ -147,7 +147,51 @@ func test_every_quest_can_be_finished() -> void:
 					% [objective.get("text", objective.get("id", "?")), quest.get("title", "?")])
 
 
+func test_everyone_can_be_reached_on_foot() -> void:
+	# Мебель твёрдая. Поставили диван поперёк прохода — к сотруднику не подойти,
+	# и игра непроходима, хотя все данные в порядке. Идём от старта по клеткам,
+	# где есть пол и нет твёрдого тайла; дверь по пропуску считаем открытой —
+	# открывается ли она, проверяет test_closed_doors_can_be_opened.
+	if _root == null:
+		return
+	var ground := _root.get_node_or_null("Ground") as TileMapLayer
+	var walls := _root.get_node_or_null("Walls") as TileMapLayer
+	var spawn := _root.get_node_or_null("PlayerSpawn") as Node2D
+	if ground == null or walls == null or spawn == null:
+		failures.append("в уровне нет Ground, Walls или PlayerSpawn — проверить проходимость нельзя")
+		return
+
+	var reached := { ground.local_to_map(spawn.position): true }
+	var queue: Array[Vector2i] = [ground.local_to_map(spawn.position)]
+	while not queue.is_empty():
+		var cell: Vector2i = queue.pop_front()
+		for step: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var next := cell + step
+			if reached.has(next) or ground.get_cell_source_id(next) == -1 or _is_solid(walls, next):
+				continue
+			reached[next] = true
+			queue.append(next)
+
+	var targets: Array = []
+	for npc: Npc in _find(_root, "Npc"):
+		targets.append(["сотруднику '%s'" % npc.employee_id, npc.position])
+	for object: QuestObject in _find(_root, "QuestObject"):
+		targets.append(["предмету '%s'" % object.name, object.position])
+	for target: Array in targets:
+		var cell := ground.local_to_map(target[1])
+		var near := false
+		for step: Vector2i in [Vector2i.ZERO, Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			near = near or reached.has(cell + step)
+		check(near, "к %s не подойти от точки старта: проход перегорожен мебелью или стеной"
+			% target[0])
+
+
 # --- Помощники ----------------------------------------------------------------
+
+func _is_solid(walls: TileMapLayer, cell: Vector2i) -> bool:
+	var data := walls.get_cell_tile_data(cell)
+	return data != null and data.get_collision_polygons_count(0) > 0
+
 
 ## Обход дерева сцены. Сравниваем по имени класса, а не через `is`: так тест
 ## не зависит от того, в каком файле лежит скрипт.

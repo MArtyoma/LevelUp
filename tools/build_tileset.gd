@@ -35,6 +35,16 @@ const TILES := [
 	{ "cell": Vector2i(4, 1), "name": "коробка",   "solid": Vector2.ZERO },
 	{ "cell": Vector2i(5, 1), "name": "папка",     "solid": Vector2.ZERO },
 	{ "cell": Vector2i(6, 1), "name": "лицо стены","solid": Vector2(1.0, 1.0) },
+	# Ряды 2–3 — предметы отделов (assets/props/, вклеивает tools/art/draw_tiles.py).
+	{ "cell": Vector2i(0, 2), "name": "сервер",    "solid": Vector2(0.625, 0.75) },
+	{ "cell": Vector2i(1, 2), "name": "сейф",      "solid": Vector2(0.875, 0.75) },
+	{ "cell": Vector2i(2, 2), "name": "кофемашина","solid": Vector2(0.625, 0.75) },
+	{ "cell": Vector2i(3, 2), "name": "глобус",    "solid": Vector2(0.5, 0.5) },
+	{ "cell": Vector2i(4, 2), "name": "стеллаж",   "solid": Vector2(0.75, 0.75) },
+	{ "cell": Vector2i(5, 2), "name": "флипчарт",  "solid": Vector2(0.75, 0.5) },
+	{ "cell": Vector2i(6, 2), "name": "кубок",     "solid": Vector2(0.5, 0.5) },
+	{ "cell": Vector2i(7, 2), "name": "диван",     "solid": Vector2(1.0, 0.625) },
+	{ "cell": Vector2i(0, 3), "name": "доска объявлений на стене", "solid": Vector2(1.0, 1.0) },
 ]
 
 
@@ -73,9 +83,16 @@ func _initialize() -> void:
 	# живут в тайлсете, и до этого момента у тайла их просто нет.
 	tile_set.add_source(source, 0)
 
+	# Атлас из make_placeholder_art.py — два ряда, без предметов отделов. Тогда
+	# их тайлов просто нет, а не тайлы с пустой картинкой.
+	var rows := texture.get_height() / tile
 	var solid_count := 0
+	var created := 0
 	for entry: Dictionary in TILES:
+		if (entry["cell"] as Vector2i).y >= rows:
+			continue
 		source.create_tile(entry["cell"])
+		created += 1
 		if entry.has("surface"):
 			source.get_tile_data(entry["cell"], 0).set_custom_data(SURFACE_LAYER, entry["surface"])
 		var solid: Vector2 = entry["solid"]
@@ -91,7 +108,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	print("Тайлсет собран: %s — тайл %dx%d, %d тайлов, из них непроходимых %d"
-		% [OUTPUT_PATH, tile, tile, TILES.size(), solid_count])
+		% [OUTPUT_PATH, tile, tile, created, solid_count])
 	quit(0)
 
 

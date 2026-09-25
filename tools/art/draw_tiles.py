@@ -9,9 +9,11 @@
     python3 tools/art/draw_tiles.py              # перезаписать атлас
     python3 tools/art/draw_tiles.py --preview    # плюс увеличенный показ в art_out/
 
-Раскладка та же, что у заглушки (8 колонок x 2 ряда, клетки из
-tools/build_tileset.gd), поэтому карта и сцены не меняются. Файл остаётся
-`office_placeholder.png`: это черновик до арта художника команды.
+Раскладка: 8 колонок x 4 ряда, клетки — из tools/build_tileset.gd. Ряды 0–1 рисует
+этот файл, ряды 2–3 — предметы отделов (сервер, сейф, глобус...): их рисует нейросеть
+(gen_sprite.py --kind prop), а сюда они вклеиваются из `assets/props/<имя>.png`
+(или `<имя>_placeholder.png`). Заменить предмет — положить свой PNG 16x16 и перезапустить.
+Файл остаётся `office_placeholder.png`: это черновик до арта художника команды.
 
 Мебель рисуется на прозрачном фоне — она стоит на слое Walls поверх пола.
 Рисуется всё в 16x16; если в project.godot тайл другой, атлас увеличивается
@@ -248,6 +250,39 @@ def wall_face(c):
     c.rect(0, T - 1, T, 1, "dusk")        # тень на полу
 
 
+# Предметы отделов: клетка атласа -> имя файла в assets/props/.
+PROPS = {
+    (0, 2): "server", (1, 2): "safe", (2, 2): "coffee", (3, 2): "globe",
+    (4, 2): "bookshelf", (5, 2): "flipchart", (6, 2): "trophy", (7, 2): "sofa",
+}
+# Висят на стене: клеятся поверх «лица стены» (6,1), чтобы плинтус оставался виден.
+WALL_PROPS = {(0, 3): "notice_board"}
+PROPS_DIR = GAME / "assets/props"
+ROWS = 4
+
+
+def load_prop(name):
+    for suffix in ("", "_placeholder"):
+        path = PROPS_DIR / f"{name}{suffix}.png"
+        if path.exists():
+            return Image.open(path).convert("RGBA")
+    print(f"нет assets/props/{name}.png — клетка останется пустой")
+    return None
+
+
+def paste_props(img, pal):
+    for (col, row), name in PROPS.items():
+        prop = load_prop(name)
+        if prop is not None:
+            img.alpha_composite(prop, (col * T + (T - prop.width) // 2, row * T + (T - prop.height)))
+    for (col, row), name in WALL_PROPS.items():
+        wall_face(Cell(img, col, row, pal))
+        prop = load_prop(name)
+        if prop is not None:
+            # Над плинтусом (он с 12-й строки): по центру, верхний край — на 2-й строке.
+            img.alpha_composite(prop, (col * T + (T - prop.width) // 2, row * T + 2))
+
+
 DRAW = {
     (0, 0): carpet, (1, 0): corridor, (2, 0): wall, (3, 0): wall_top,
     (4, 0): desk, (5, 0): chair, (6, 0): plant, (7, 0): door,
@@ -262,13 +297,14 @@ def main() -> None:
     args = ap.parse_args()
 
     pal = load_palette()
-    img = Image.new("RGBA", (T * 8, T * 2), (0, 0, 0, 0))
+    img = Image.new("RGBA", (T * 8, T * ROWS), (0, 0, 0, 0))
     for (col, row), draw in DRAW.items():
         draw(Cell(img, col, row, pal))
+    paste_props(img, pal)
     tile = read_tile_size()
     if tile != T:
         # Рисуем в 16 и увеличиваем целым числом раз, NEAREST — без сглаживания.
-        img = img.resize((tile * 8, tile * 2), Image.NEAREST)
+        img = img.resize((tile * 8, tile * ROWS), Image.NEAREST)
     img.save(OUT)
     print("атлас: %s" % OUT.relative_to(GAME))
 
@@ -277,7 +313,7 @@ def main() -> None:
         # Мебель показываем на ковролине — так, как она стоит в игре.
         show = Image.new("RGBA", img.size)
         for col in range(8):
-            for row in range(2):
+            for row in range(ROWS):
                 show.paste(img.crop((0, 0, T, T)), (col * T, row * T))
         show.alpha_composite(img)
         show.resize((img.width * 6, img.height * 6), Image.NEAREST).save(PREVIEW)
