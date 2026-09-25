@@ -40,7 +40,7 @@ func _ready() -> void:
 	EventBus.dialogue_finished.connect(_on_finished)
 
 
-## Сцена нарисована под окно высотой 270 пикселей; при другом размере тайла
+## Сцена нарисована под окно высотой 272 пикселя; при другом размере тайла
 ## окно другое. Пересчитываем, чтобы окно диалога занимало ту же долю экрана.
 func _apply_ui_scale() -> void:
 	var scale := Grid.ui_scale()
@@ -86,7 +86,7 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 		var button := Button.new()
 		button.text = String(choice["text"])
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		# Размер шрифта задаётся в пикселях низкого разрешения: окно игры — 480x270,
+		# Размер шрифта задаётся в пикселях низкого разрешения: окно игры — 480×272,
 		# и всё, что больше 8-9, занимает пол-экрана. Когда artist поставит
 		# пиксельный шрифт темой, эту строку можно убрать.
 		button.add_theme_font_size_override("font_size", Grid.ui_font_size(8))

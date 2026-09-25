@@ -57,6 +57,32 @@ func test_save_from_another_version_is_ignored() -> void:
 	equals(SaveGame.load_save(), {}, "сохранение чужой версии должно игнорироваться")
 
 
+func test_save_with_wrong_types_is_survived() -> void:
+	# Не словарь там, где ждём словарь, и квест, которого уже нет в данных.
+	var file := FileAccess.open(SaveGame.SAVE_PATH, FileAccess.WRITE)
+	file.store_string(JSON.stringify({
+		"version": SaveGame.SAVE_VERSION,
+		"player": 5,
+		"quests": {"state": {"q_onboarding": 1, "q_удалённый": 1, "q_first_task": {}}},
+	}))
+	file.close()
+
+	var payload := SaveGame.load_save()
+	equals(SaveGame.player_position_from(payload), Vector2.ZERO, "мусор вместо позиции")
+	equals(QuestLog.active_quests(), ["q_onboarding"] as Array[String],
+		"мусорные квесты не отброшены")
+	# Шагов в файле нет, но закрыть шаг восстановленного квеста можно — игра не падает.
+	check(QuestLog.complete_objective("q_onboarding", "obj_docs"),
+		"шаг квеста из сохранения без списка шагов не закрывается")
+
+	# Совсем не словарь вместо состояния квестов.
+	file = FileAccess.open(SaveGame.SAVE_PATH, FileAccess.WRITE)
+	file.store_string(JSON.stringify({"version": SaveGame.SAVE_VERSION, "quests": 42}))
+	file.close()
+	check(not SaveGame.load_save().is_empty(), "файл с верной версией должен читаться")
+	equals(QuestLog.active_quests().size(), 0, "число вместо квестов не должно их создавать")
+
+
 func test_garbage_inside_save_is_survived() -> void:
 	# Версия верная, но внутри мусор вместо словарей.
 	var file := FileAccess.open(SaveGame.SAVE_PATH, FileAccess.WRITE)

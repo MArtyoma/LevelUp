@@ -26,7 +26,8 @@ func test_unknown_dialogue_does_not_crash() -> void:
 
 
 func test_choice_hidden_by_requirement() -> void:
-	# Вариант «Уже занимаюсь» показывается только тем, кто уже взял квест.
+	# Вариант «Уже занимаюсь» показывается только тем, кто уже взял квест,
+	# а «Ноутбук у меня» — только когда до этого шага дошли по порядку.
 	var sizes: Array = []
 	var handler := func(choices: Array, _limit: float): sizes.append(choices.size())
 	EventBus.dialogue_choices_offered.connect(handler)
@@ -35,6 +36,7 @@ func test_choice_hidden_by_requirement() -> void:
 	DialogueRunner.advance()
 
 	DialogueRunner.stop()
+	QuestLog.start_quest("q_onboarding")
 	QuestLog.set_flag("onboarding_taken")
 	DialogueRunner.start("dlg_mironova")
 	DialogueRunner.advance()
@@ -93,6 +95,12 @@ func test_full_chain_finishes_game() -> void:
 	DialogueRunner.start("dlg_kim")
 	DialogueRunner.choose(0)
 	DialogueRunner.advance()
+	DialogueRunner.stop()
+	equals(QuestLog.access_level, 1, "пропуск выдал сисадмин, а по легенде это отдел кадров")
+
+	DialogueRunner.start("dlg_mironova")
+	DialogueRunner.advance()
+	DialogueRunner.choose(1)          # «Ноутбук у меня»
 	DialogueRunner.stop()
 
 	check(QuestLog.is_completed("q_onboarding"), "первый квест не закрылся")

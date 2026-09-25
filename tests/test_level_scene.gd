@@ -134,7 +134,8 @@ func test_every_quest_can_be_finished() -> void:
 		for node_id: String in dialogue.get("nodes", {}):
 			for effect: Dictionary in _effects_of(dialogue["nodes"][node_id]):
 				if String(effect.get("type", "")) == "complete_objective":
-					closed["%s/%s" % [effect.get("quest", ""), effect.get("objective", "")]] = "диалог"
+					var step := "%s/%s" % [effect.get("quest", ""), effect.get("objective", "")]
+					closed[step] = "диалог"
 	for object: QuestObject in _find(_root, "QuestObject"):
 		closed["%s/%s" % [object.quest_id, object.objective_id]] = "предмет на карте"
 

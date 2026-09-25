@@ -18,7 +18,13 @@ extends Node2D
 
 const PLAYER_SCENE := preload("res://src/actors/player/player.tscn")
 
+## Сколько ждём второго нажатия Esc, прежде чем выйти.
+const QUIT_CONFIRM_MS := 2000
+
 @onready var _world: Node2D = $World
+
+# Когда в последний раз нажали Esc вне разговора. Выход — только по второму нажатию.
+var _quit_requested_at: int = -QUIT_CONFIRM_MS * 10
 
 
 func _ready() -> void:
@@ -84,6 +90,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		DialogueRunner.stop()
 		get_viewport().set_input_as_handled()
 		return
+	# По той же причине вне разговора выход — только со второго нажатия:
+	# Esc жмут по привычке, чтобы «закрыть что-нибудь», а прохождение
+	# участника замера с середины не продолжить.
+	var now := Time.get_ticks_msec()
+	if now - _quit_requested_at > QUIT_CONFIRM_MS:
+		_quit_requested_at = now
+		EventBus.hint_shown.emit("Нажми Esc ещё раз, чтобы выйти из игры")
+		get_viewport().set_input_as_handled()
+		return
 	EventBus.game_finished.emit("quit")
 	get_tree().quit()
 
@@ -95,9 +110,13 @@ func _show_data_error() -> void:
 	label.anchors_preset = Control.PRESET_FULL_RECT
 	label.anchor_right = 1.0
 	label.anchor_bottom = 1.0
-	label.add_theme_font_size_override("font_size", 8)
+	label.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.text = "Игра не запустилась: данные не проходят проверку.\n\n%s\n\nПочините файлы в data/ и запустите снова.\nПроверить вручную: godot --headless --script tools/validate_data.gd" % GameData.load_error
+	label.text = (
+		"Игра не запустилась: данные не проходят проверку.\n\n%s\n\n"
+		+ "Почините файлы в data/ и запустите снова.\n"
+		+ "Проверить вручную: godot --headless --script tools/validate_data.gd"
+	) % GameData.load_error
 	layer.add_child(label)
 	add_child(layer)
 	push_error(GameData.load_error)

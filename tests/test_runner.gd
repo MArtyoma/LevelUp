@@ -5,7 +5,7 @@ extends Node
 ##     godot --headless res://tests/test_runner.tscn
 ##
 ## Код возврата 0 — всё зелёное, 1 — что-то сломано. По нему GitHub Actions
-## не пускает поломку в master (`.github/workflows/ci.yml`).
+## ставит крестик в pull request (`.github/workflows/ci.yml`).
 ##
 ## Почему сцена, а не `--script`: тестам нужны автозагрузки (GameData, QuestLog,
 ## DialogueRunner), а они появляются только когда игра действительно запущена.

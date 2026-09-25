@@ -20,7 +20,6 @@
 
 # Данные, интерфейс, сборка
 /src/autoload/game_data.gd  @artist
-/src/autoload/save_game.gd  @artist
 /src/ui/                    @artist
 /assets/                    @artist
 

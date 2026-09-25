@@ -31,6 +31,6 @@
     { "id": "topic_contract", "title": "договор с клиентом",           "question": "Кто отвечает за договор с новым клиентом?",                   "owner": "emp_pavlov" },
     { "id": "topic_invoice",  "title": "оплата счёта",                 "question": "К кому идти, чтобы оплатили счёт подрядчику?",                "owner": "emp_zaytseva" },
     { "id": "topic_laptop",   "title": "не работает техника",          "question": "К кому идти, если не включается рабочий ноутбук?",            "owner": "emp_kim" },
-    { "id": "topic_strategy", "title": "планы компании",               "question": "Кто решает, какими направлениями компания займётся в году?",  "owner": "emp_koroleva" }
+    { "id": "topic_strategy", "title": "планы компании",               "question": "Кто решает, какими направлениями компания займётся в этом году?", "owner": "emp_koroleva" }
   ]
 }

@@ -2,7 +2,8 @@ extends Node
 
 ## Сохранение и загрузка прохождения.
 ##
-## Владелец: **artist** (его зона — данные, интерфейс, сборка). Каркас сделал лид.
+## Владелец: лид. Это тонкая обёртка над QuestLog, и держать её надо рядом с ним:
+## поменялось состояние прохождения — поменялся формат файла.
 ##
 ## **Игра не загружает сохранение сама, и это сознательно.** На замере гипотезы
 ## (неделя 9) каждый участник обязан начать с нуля: если второй участник за тем же
@@ -59,12 +60,17 @@ func load_save() -> Dictionary:
 		push_warning("Сохранение от другой версии игры, начинаем заново")
 		return {}
 
-	QuestLog.from_dict(payload.get("quests", {}))
+	var quests = payload.get("quests", {})
+	QuestLog.from_dict(quests if typeof(quests) == TYPE_DICTIONARY else {})
 	return payload
 
 
 func player_position_from(payload: Dictionary) -> Vector2:
-	var player: Dictionary = payload.get("player", {})
+	# Без типа нарочно: типизированная переменная упала бы на чужом файле
+	# раньше проверки (docs/conventions.md, «Грабли»).
+	var player = payload.get("player", {})
+	if typeof(player) != TYPE_DICTIONARY:
+		return Vector2.ZERO
 	return Vector2(float(player.get("x", 0.0)), float(player.get("y", 0.0)))
 
 

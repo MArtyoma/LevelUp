@@ -36,7 +36,8 @@ const TILES := [
 func _initialize() -> void:
 	var texture: Texture2D = load(ATLAS_PATH)
 	if texture == null:
-		push_error("Не найден атлас %s. Сначала: python3 tools/make_placeholder_art.py" % ATLAS_PATH)
+		push_error("Не найден атлас %s. Сначала: python3 tools/make_placeholder_art.py"
+			% ATLAS_PATH)
 		quit(1)
 		return
 

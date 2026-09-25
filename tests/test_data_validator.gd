@@ -38,7 +38,8 @@ func test_head_from_another_department() -> void:
 	var company := _company(
 		[
 			{"id": "emp_a", "name": "А", "role": "роль", "department": "dept_one"},
-			{"id": "emp_b", "name": "Б", "role": "роль", "department": "dept_two", "reports_to": "emp_a"},
+			{"id": "emp_b", "name": "Б", "role": "роль", "department": "dept_two",
+				"reports_to": "emp_a"},
 		],
 		[
 			{"id": "dept_one", "name": "Раз", "head": "emp_a"},
@@ -66,8 +67,10 @@ func test_two_topics_with_same_question() -> void:
 		],
 		[{"id": "d", "name": "Отдел", "head": "emp_a"}],
 		[
-			{"id": "t1", "title": "отпуск", "question": "К кому идти за отпуском?", "owner": "emp_a"},
-			{"id": "t2", "title": "отпуск-2", "question": "К кому идти за отпуском?", "owner": "emp_b"},
+			{"id": "t1", "title": "отпуск", "question": "К кому идти за отпуском?",
+				"owner": "emp_a"},
+			{"id": "t2", "title": "отпуск-2", "question": "К кому идти за отпуском?",
+				"owner": "emp_b"},
 		])
 	var report := DataValidator.validate_all(company, {}, {})
 	contains_error(report, "один и тот же вопрос", "дубль вопроса теста не пойман")
@@ -107,6 +110,52 @@ func test_duel_without_correct_answer() -> void:
 	}]}
 	var report := DataValidator.validate_all(_company([]), dialogues, {})
 	contains_error(report, "correct", "дуэль без верного ответа не поймана")
+
+
+func test_effect_closes_missing_step() -> void:
+	# Реплика звучит, шаг не закрывается никогда — и никто не видит почему.
+	var quests := {"quests": [{"id": "q", "title": "Квест", "giver": "",
+		"objectives": [{"id": "obj_real", "text": "шаг"}]}]}
+	var dialogues := {"dialogues": [{
+		"id": "dlg", "speaker": "", "start": "a",
+		"nodes": {"a": {"text": "раз", "next": "end", "effects": [
+			{"type": "complete_objective", "quest": "q", "objective": "obj_опечатка"}]}},
+	}]}
+	var report := DataValidator.validate_all(_company([]), dialogues, quests)
+	contains_error(report, "obj_опечатка", "опечатка в id шага не поймана")
+
+
+func test_requirement_typo_is_caught() -> void:
+	# `quest_activ` вместо `quest_active` иначе значит «условия нет»:
+	# вариант виден всегда, и игрок видит подсказку раньше времени.
+	var dialogues := {"dialogues": [{
+		"id": "dlg", "speaker": "", "start": "a",
+		"nodes": {"a": {"text": "раз", "choices": [
+			{"text": "вариант", "next": "end", "requires": {"quest_activ": "q"}},
+			{"text": "другой", "next": "end", "requires": {"quest_done": "q_нет"}},
+		]}},
+	}]}
+	var report := DataValidator.validate_all(_company([]), dialogues, {})
+	contains_error(report, "quest_activ", "опечатка в названии условия не поймана")
+	contains_error(report, "q_нет", "условие на несуществующий квест не поймано")
+
+
+func test_duel_on_wrong_points_to_missing_node() -> void:
+	var dialogues := {"dialogues": [{
+		"id": "duel", "kind": "duel", "patience": 2, "on_wrong": "agian", "speaker": "",
+		"start": "a", "nodes": {"a": {"text": "вопрос",
+			"choices": [{"text": "ответ", "next": "end", "correct": true}]}},
+	}]}
+	var report := DataValidator.validate_all(_company([]), dialogues, {})
+	contains_error(report, "agian", "опечатка в on_wrong не поймана")
+
+
+func test_bad_palette_is_caught() -> void:
+	var company := _company(
+		[{"id": "emp_a", "name": "А", "role": "роль", "department": "d", "palette": "зелёный"}],
+		[{"id": "d", "name": "Отдел", "head": "emp_a"}])
+	var report := DataValidator.validate_all(company, {}, {})
+	contains_error(report, "зелёный", "цвет не в формате #rrggbb не пойман")
 
 
 func _load(path: String) -> Dictionary:

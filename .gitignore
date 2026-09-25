@@ -44,7 +44,3 @@ Thumbs.db
 .idea/
 *~
 *.swp
-
-# Черновики генератора спрайтов (tools/art/gen_sprite.py, docs/art-pipeline.md).
-# В игру идёт только выбранный спрайт, скопированный в assets/.
-/art_out/

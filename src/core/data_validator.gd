@@ -14,7 +14,7 @@ extends RefCounted
 ## Три уровня проверок:
 ##   1. Структура   — поля на месте, типы верные.
 ##   2. Ссылки      — каждый id, на который ссылаются, существует.
-##   3. Методика    — данные пригодны для замера гипотезы (см. `check_testability`).
+##   3. Методика    — данные пригодны для замера гипотезы (см. `_check_testability`).
 ##      Третий уровень — не педантизм: тест из 10 вопросов для недели 9 собирается
 ##      ровно из этих данных, и если на вопрос есть два правильных ответа, замер
 ##      измеряет шум. Дешевле поймать это скриптом, чем на эксперименте.
@@ -99,11 +99,16 @@ static func _check_company(company: Dictionary, report: Report) -> void:
 		var eid: String = emp.get("id", "?")
 		for field in ["name", "role", "department"]:
 			if not emp.get(field, ""):
-				report.add_error("%s: у сотрудника %s не заполнено поле \"%s\"" % [where, eid, field])
+				report.add_error("%s: у сотрудника %s не заполнено поле \"%s\""
+					% [where, eid, field])
 		var dept_id: String = emp.get("department", "")
 		if dept_id and not dept_ids.has(dept_id):
 			report.add_error("%s: сотрудник %s числится в отделе %s, которого нет в списке отделов"
 				% [where, eid, dept_id])
+		var palette: String = emp.get("palette", "")
+		if palette and not Color.html_is_valid(palette):
+			report.add_error("%s: у сотрудника %s цвет \"%s\" — нужен вид #68d391"
+				% [where, eid, palette])
 		var boss: String = emp.get("reports_to", "")
 		if boss:
 			if not emp_ids.has(boss):
@@ -139,7 +144,8 @@ static func _check_hierarchy_has_no_cycles(employees: Array, where: String, repo
 			tops.append(eid)
 
 	if tops.is_empty() and not employees.is_empty():
-		report.add_error("%s: ни у кого не пустое \"reports_to\" — значит, в иерархии кольцо" % where)
+		report.add_error("%s: ни у кого не пустое \"reports_to\" — значит, в иерархии кольцо"
+			% where)
 	elif tops.size() > 1:
 		report.add_warning("%s: сотрудников без начальника несколько (%s). Для теста лучше, "
 			% [where, ", ".join(tops)] + "когда главный в компании ровно один")
@@ -167,14 +173,15 @@ static func _check_dialogues(dialogues: Dictionary, company: Dictionary,
 		report.add_warning("%s: ни одного диалога — NPC будут молчать" % where)
 
 	var emp_ids := _ids_of(company.get("employees", []))
-	var quest_ids := _ids_of(quests.get("quests", []))
+	var steps := _steps_of(quests.get("quests", []))
 	_collect_ids(list, where, "dialogues", report)
 
 	for dlg: Dictionary in list:
 		var did: String = dlg.get("id", "?")
 		var speaker: String = dlg.get("speaker", "")
 		if speaker and not emp_ids.has(speaker):
-			report.add_error("%s: диалог %s ведёт %s, а такого сотрудника нет" % [where, did, speaker])
+			report.add_error("%s: диалог %s ведёт %s, а такого сотрудника нет"
+				% [where, did, speaker])
 		elif speaker.is_empty():
 			# Диалог запускается только через NPC, а NPC находит его по speaker.
 			# Без speaker до этого разговора невозможно дойти в игре.
@@ -188,7 +195,18 @@ static func _check_dialogues(dialogues: Dictionary, company: Dictionary,
 
 		var start: String = dlg.get("start", "")
 		if not nodes.has(start):
-			report.add_error("%s: диалог %s начинается с реплики \"%s\", которой нет" % [where, did, start])
+			report.add_error("%s: диалог %s начинается с реплики \"%s\", которой нет"
+				% [where, did, start])
+
+		var kind: String = dlg.get("kind", "")
+		if kind and kind != "duel":
+			report.add_error("%s: у диалога %s вид \"%s\" — бывает только \"duel\" или ничего"
+				% [where, did, kind])
+		var on_wrong: String = dlg.get("on_wrong", "")
+		if on_wrong and not nodes.has(on_wrong):
+			report.add_error(("%s: у дуэли %s после промаха (\"on_wrong\") разговор уходит "
+				+ "на \"%s\", которой нет")
+				% [where, did, on_wrong])
 
 		# Точек входа в граф может быть две: обычный старт и `on_wrong` у дуэли,
 		# куда разговор уводит при неверном ответе.
@@ -209,8 +227,11 @@ static func _check_dialogues(dialogues: Dictionary, company: Dictionary,
 				if target != "end" and not nodes.has(target):
 					report.add_error("%s: реплика %s/%s ведёт на \"%s\", которой нет"
 						% [where, did, node_id, target])
+			var here := "%s: диалог %s/%s" % [where, did, node_id]
 			for effect: Dictionary in _effects_of(node):
-				_check_effect(effect, quest_ids, "%s: диалог %s/%s" % [where, did, node_id], report)
+				_check_effect(effect, steps, here, report)
+			for choice: Dictionary in node.get("choices", []):
+				_check_requirement(choice.get("requires", {}), steps, here, report)
 
 		if dlg.get("kind", "") == "duel":
 			if int(dlg.get("patience", 0)) <= 0:
@@ -260,9 +281,11 @@ static func _check_quests(quests: Dictionary, company: Dictionary, report: Repor
 
 		var giver: String = quest.get("giver", "")
 		if not giver:
-			report.add_error("%s: у квеста %s не указан \"giver\" — некому его выдать" % [where, qid])
+			report.add_error("%s: у квеста %s не указан \"giver\" — некому его выдать"
+				% [where, qid])
 		elif not emp_ids.has(giver):
-			report.add_error("%s: квест %s выдаёт %s, а такого сотрудника нет" % [where, qid, giver])
+			report.add_error("%s: квест %s выдаёт %s, а такого сотрудника нет"
+				% [where, qid, giver])
 
 		var objectives: Array = quest.get("objectives", [])
 		if objectives.is_empty():
@@ -313,7 +336,8 @@ static func _check_testability(company: Dictionary, quests: Dictionary,
 			report.add_error("%s: у темы %s не указан \"owner\" — не с чем сверять ответ в тесте"
 				% [where, tid])
 		elif not emp_ids.has(owner):
-			report.add_error("%s: тема %s закреплена за %s, а такого сотрудника нет" % [where, tid, owner])
+			report.add_error("%s: тема %s закреплена за %s, а такого сотрудника нет"
+				% [where, tid, owner])
 
 		var question: String = topic.get("question", "")
 		if not question:
@@ -327,7 +351,8 @@ static func _check_testability(company: Dictionary, quests: Dictionary,
 		var title: String = topic.get("title", "")
 		if title:
 			if by_title.has(title):
-				report.add_error("%s: темы %s и %s называются одинаково (\"%s\") — игрок не различит"
+				report.add_error(("%s: темы %s и %s называются одинаково (\"%s\") — "
+					+ "игрок не различит")
 					% [where, by_title[title], tid, title])
 			by_title[title] = tid
 
@@ -354,8 +379,9 @@ static func _check_testability(company: Dictionary, quests: Dictionary,
 			taught[topic_id] = true
 	for topic: Dictionary in topics:
 		if not taught.has(topic.get("id", "")):
-			report.add_warning("data/quests.json: тему %s не преподаёт ни один квест и ни один "
-				% topic.get("id", "?") + "диалог, а в тесте она будет — спросим то, чего не показали")
+			report.add_warning("%s: тему %s не преподаёт ни один квест и ни один "
+				% [where, topic.get("id", "?")]
+				+ "диалог, а в тесте она будет — спросим то, чего не показали")
 
 
 # --- Мелкие помощники ---------------------------------------------------------
@@ -366,7 +392,14 @@ const KNOWN_EFFECTS := ["start_quest", "complete_objective", "grant_access",
 	"set_flag", "finish_game"]
 
 
-static func _check_effect(effect: Dictionary, quest_ids: Dictionary, where: String,
+## Условия, которые понимает QuestLog.check_requirement. Опечатка в ключе
+## (`quest_activ`) иначе молча превращается в «условия нет», и вариант ответа
+## виден всегда.
+const KNOWN_REQUIREMENTS := ["flag", "not_flag", "quest_active", "quest_done", "step", "access"]
+
+
+## `steps` — квест -> { шаг: true }: проверяем не только квест, но и шаг в нём.
+static func _check_effect(effect: Dictionary, steps: Dictionary, where: String,
 		report: Report) -> void:
 	var type: String = effect.get("type", "")
 	if not KNOWN_EFFECTS.has(type):
@@ -375,9 +408,36 @@ static func _check_effect(effect: Dictionary, quest_ids: Dictionary, where: Stri
 		return
 	if type in ["start_quest", "complete_objective"]:
 		var qid: String = effect.get("quest", "")
-		if not quest_ids.has(qid):
+		if not steps.has(qid):
 			report.add_error("%s: действие \"%s\" ссылается на квест %s, которого нет"
 				% [where, type, qid])
+		elif type == "complete_objective" \
+				and not steps[qid].has(String(effect.get("objective", ""))):
+			# Самая тихая поломка: реплика звучит, а шаг не закрывается никогда.
+			report.add_error("%s: действие закрывает шаг \"%s\", а в квесте %s такого шага нет"
+				% [where, effect.get("objective", ""), qid])
+	if type == "set_flag" and not effect.get("flag", ""):
+		report.add_error("%s: действие \"set_flag\" без названия отметки (\"flag\")" % where)
+	if type == "grant_access" and int(effect.get("level", 0)) < 1:
+		report.add_error("%s: действие \"grant_access\" без уровня пропуска (\"level\": 2)" % where)
+
+
+static func _check_requirement(requirement: Dictionary, steps: Dictionary, where: String,
+		report: Report) -> void:
+	for key: String in requirement:
+		if not KNOWN_REQUIREMENTS.has(key):
+			report.add_error("%s: неизвестное условие \"%s\". Доступны: %s"
+				% [where, key, ", ".join(KNOWN_REQUIREMENTS)])
+	for key in ["quest_active", "quest_done"]:
+		if requirement.has(key) and not steps.has(String(requirement[key])):
+			report.add_error("%s: условие \"%s\" ссылается на квест %s, которого нет"
+				% [where, key, requirement[key]])
+	if requirement.has("step"):
+		var parts := String(requirement["step"]).split("/")
+		if parts.size() != 2 or not steps.has(parts[0]) or not steps[parts[0]].has(parts[1]):
+			report.add_error(("%s: условие \"step\": \"%s\" — нужен существующий шаг "
+				+ "вида \"квест/шаг\"")
+				% [where, requirement["step"]])
 
 
 ## Собирает id из списка, попутно ругаясь на пустые и повторяющиеся.
@@ -396,6 +456,20 @@ static func _collect_ids(list: Array, where: String, section: String, report: Re
 		else:
 			ids[id] = true
 	return ids
+
+
+## Квест -> { шаг: true }. Нужен проверкам, которые ссылаются на конкретный шаг.
+static func _steps_of(quests: Array) -> Dictionary:
+	var result: Dictionary = {}
+	for quest in quests:
+		if typeof(quest) != TYPE_DICTIONARY or not quest.get("id", ""):
+			continue
+		var objectives: Dictionary = {}
+		for objective in quest.get("objectives", []):
+			if typeof(objective) == TYPE_DICTIONARY and objective.get("id", ""):
+				objectives[objective["id"]] = true
+		result[quest["id"]] = objectives
+	return result
 
 
 static func _ids_of(list: Array) -> Dictionary:

@@ -98,6 +98,20 @@ func next_objective_id(quest_id: String) -> String:
 	return ""
 
 
+## Стоит ли игрок сейчас на этом шаге: квест взят, и шаг — следующий по порядку.
+## В данных записывается как "q_onboarding/obj_laptop" (условие `step`).
+##
+## Нужно вариантам ответа, которые закрывают шаг. Без такого условия NPC «выдаёт
+## ноутбук» игроку, который ещё не забрал документы: реплика прозвучала, а шаг
+## не засчитался, потому что до него по порядку не дошли, — и игрок не понимает,
+## почему журнал стоит на месте.
+func is_current_step(step: String) -> bool:
+	var parts := step.split("/")
+	if parts.size() != 2:
+		return false
+	return is_active(parts[0]) and next_objective_id(parts[0]) == parts[1]
+
+
 ## Текст текущего шага — для журнала квестов и подсказки на экране.
 func next_objective_text(quest_id: String) -> String:
 	var oid := next_objective_id(quest_id)
@@ -140,7 +154,9 @@ func has_flag(flag: String) -> bool:
 
 ## Проверка условия из данных: показывать ли вариант ответа, открыта ли ветка диалога.
 ## Условие — словарь, все указанные ключи должны выполняться одновременно.
-## Поддерживается: `flag`, `not_flag`, `quest_active`, `quest_done`, `access`.
+## Поддерживается: `flag`, `not_flag`, `quest_active`, `quest_done`, `step`, `access`.
+## Новое условие добавляется сюда, в `DataValidator.KNOWN_REQUIREMENTS`
+## и в `docs/data-format.md` — все три места сразу.
 func check_requirement(requirement: Dictionary) -> bool:
 	if requirement.is_empty():
 		return true
@@ -151,6 +167,8 @@ func check_requirement(requirement: Dictionary) -> bool:
 	if requirement.has("quest_active") and not is_active(requirement["quest_active"]):
 		return false
 	if requirement.has("quest_done") and not is_completed(requirement["quest_done"]):
+		return false
+	if requirement.has("step") and not is_current_step(String(requirement["step"])):
 		return false
 	if requirement.has("access") and not has_access(int(requirement["access"])):
 		return false
@@ -185,8 +203,14 @@ func from_dict(data: Dictionary) -> void:
 	# всей функции в том, чтобы пережить чужой испорченный файл.
 	var state = data.get("state", {})
 	if typeof(state) == TYPE_DICTIONARY:
-		for quest_id: String in state:
-			_state[quest_id] = clampi(int(state[quest_id]), State.NOT_STARTED, State.COMPLETED)
+		for quest_id in state:
+			# Квест, которого больше нет в данных (файл от прошлой версии), пропускаем:
+			# иначе журнал покажет пустую строку, а закрыть такой квест нечем.
+			if typeof(state[quest_id]) not in [TYPE_INT, TYPE_FLOAT] \
+					or GameData.get_quest(String(quest_id)).is_empty():
+				continue
+			_state[String(quest_id)] = clampi(
+				int(state[quest_id]), State.NOT_STARTED, State.COMPLETED)
 
 	var done = data.get("done_objectives", {})
 	if typeof(done) == TYPE_DICTIONARY:
@@ -197,3 +221,9 @@ func from_dict(data: Dictionary) -> void:
 	var flags = data.get("flags", {})
 	if typeof(flags) == TYPE_DICTIONARY:
 		_flags = flags.duplicate()
+
+	# У взятого квеста обязана быть запись о шагах, даже если в файле её нет:
+	# `complete_objective` пишет прямо в неё.
+	for quest_id: String in _state:
+		if not _done_objectives.has(quest_id):
+			_done_objectives[quest_id] = {}

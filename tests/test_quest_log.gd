@@ -30,6 +30,9 @@ func test_quest_completes_and_gives_access() -> void:
 	QuestLog.start_quest("q_onboarding")
 	QuestLog.complete_objective("q_onboarding", "obj_docs")
 	QuestLog.complete_objective("q_onboarding", "obj_laptop")
+	check(not QuestLog.is_completed("q_onboarding"), "квест закрылся раньше последнего шага")
+	equals(QuestLog.access_level, 1, "пропуск выдан до возвращения в отдел кадров")
+	QuestLog.complete_objective("q_onboarding", "obj_pass")
 	check(QuestLog.is_completed("q_onboarding"), "квест не закрылся после последнего шага")
 	equals(QuestLog.access_level, 2, "награда-пропуск не выдалась")
 
@@ -49,11 +52,27 @@ func test_requirements() -> void:
 	check(not QuestLog.check_requirement({"flag": "нет_такой"}), "прошла несуществующая отметка")
 	check(not QuestLog.check_requirement({"not_flag": "знаком_с_охраной"}), "not_flag наоборот")
 	check(QuestLog.check_requirement({"quest_active": "q_onboarding"}), "активный квест не виден")
-	check(not QuestLog.check_requirement({"quest_done": "q_onboarding"}), "квест считается сделанным")
+	check(not QuestLog.check_requirement({"quest_done": "q_onboarding"}),
+		"квест считается сделанным")
 	check(not QuestLog.check_requirement({"access": 5}), "прошёл недостаточный пропуск")
 	# Несколько условий сразу — должны выполняться все.
 	check(not QuestLog.check_requirement({"flag": "знаком_с_охраной", "access": 5}),
 		"условия проверяются не все сразу")
+
+
+func test_step_requirement_follows_the_order() -> void:
+	# Условие `step` — «игрок сейчас на этом шаге». Им закрыт вариант «Меня прислала
+	# Елена за ноутбуком»: до того как забрана папка, Ким ноутбук не выдаёт.
+	check(not QuestLog.check_requirement({"step": "q_onboarding/obj_docs"}),
+		"шаг невзятого квеста считается текущим")
+	QuestLog.start_quest("q_onboarding")
+	check(QuestLog.check_requirement({"step": "q_onboarding/obj_docs"}), "первый шаг не текущий")
+	check(not QuestLog.check_requirement({"step": "q_onboarding/obj_laptop"}),
+		"второй шаг стал текущим раньше первого")
+	QuestLog.complete_objective("q_onboarding", "obj_docs")
+	check(QuestLog.check_requirement({"step": "q_onboarding/obj_laptop"}),
+		"второй шаг не стал текущим")
+	check(not QuestLog.check_requirement({"step": "мусор"}), "кривая запись шага прошла проверку")
 
 
 func test_state_survives_save_and_load() -> void:

@@ -33,7 +33,8 @@ signal dialogue_choices_offered(choices: Array, time_limit: float)
 ## Дуэль: игрок промахнулся или не успел ответить. Терпение руководителя убавилось.
 signal duel_patience_changed(left: int, total: int)
 
-## Разговор закончился. `outcome` — "ok", "duel_won" или "duel_lost".
+## Разговор закончился. `outcome` — "ok", "duel_won", "duel_lost" или "aborted"
+## (прерван снаружи: игрок нажал Esc).
 signal dialogue_finished(dialogue_id: String, outcome: String)
 
 # --- Квесты ------------------------------------------------------------------

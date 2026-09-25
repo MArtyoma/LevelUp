@@ -6,9 +6,11 @@ name: Проверка проекта
 # CI переносит обнаружение на три минуты после push и никого не заставляет
 # ничего помнить.
 #
-# Красная галочка в pull request означает ровно одно: «в master это не попадёт,
-# пока не починим». Это не про строгость, это про то, чтобы у команды всегда
-# был запускаемый билд (правило 3 из docs/roadmap.md).
+# Красный крестик в pull request означает ровно одно: «в master это не попадёт,
+# пока не починим». Физически запрещает слияние защита ветки — она включается
+# один раз в настройках репозитория (Settings → Branches → master → Require
+# status checks). Без неё крестик — только предупреждение. Это не про строгость,
+# а про то, чтобы у команды всегда был запускаемый билд (правило 3 плана по неделям).
 
 on:
   push:
@@ -24,13 +26,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # D-012: все работают в одной версии. Редактор другой версии при сохранении
+      # переписывает эту строку в project.godot — здесь это и ловится.
+      - name: Версия движка в project.godot — 4.7
+        run: |
+          grep -q 'config/features=PackedStringArray("4.7"' project.godot || {
+            echo "project.godot сохранён не в Godot 4.7 — см. D-012, поставьте 4.7.2"
+            exit 1
+          }
+
       - name: Скачать Godot ${{ env.GODOT_VERSION }}
         run: |
           curl -sL -o godot.zip \
             "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           unzip -q godot.zip
-          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-          chmod +x /usr/local/bin/godot
+          # /usr/local/bin на раннере GitHub принадлежит root — без sudo шаг падает.
+          sudo install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
 
       - name: Импорт ресурсов
         run: godot --headless --import
