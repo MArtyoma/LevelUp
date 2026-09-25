@@ -36,6 +36,8 @@ extends Area2D
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _caption: Label = $Caption
+@onready var _reach_shape: CollisionShape2D = $CollisionShape2D
+@onready var _blocker_shape: CollisionShape2D = $Blocker/CollisionShape2D
 
 var _employee: Dictionary = {}
 
@@ -43,6 +45,7 @@ var _employee: Dictionary = {}
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	_apply_grid()
 	add_to_group("interactable")
 	# NPC ничего не делает каждый кадр: он реагирует только на то, что к нему подошли.
 	# Двенадцать спящих узлов вместо двенадцати работающих — мелочь, которая
@@ -50,6 +53,33 @@ func _ready() -> void:
 	set_process(false)
 	set_physics_process(false)
 	_refresh()
+
+
+## Подгоняет размеры под текущий размер тайла (см. `src/core/grid.gd`).
+##
+## Формы создаются новыми для каждого NPC. Если бы мы правили подресурс из сцены,
+## все шесть сотрудников делили бы одну коробку столкновений — и изменение
+## у одного меняло бы её у всех.
+func _apply_grid() -> void:
+	var reach := CircleShape2D.new()
+	reach.radius = Grid.interactable_radius()
+	_reach_shape.shape = reach
+
+	var blocker := RectangleShape2D.new()
+	blocker.size = Grid.body_collision_size()
+	_blocker_shape.shape = blocker
+	_blocker_shape.position = Grid.body_collision_offset()
+
+	_sprite.hframes = Grid.walk_frames()
+	_sprite.vframes = Grid.SHEET_ROWS
+	_sprite.offset = Grid.character_sprite_offset()
+
+	var caption := Grid.caption_rect()
+	_caption.offset_left = caption.position.x
+	_caption.offset_top = caption.position.y
+	_caption.offset_right = caption.end.x
+	_caption.offset_bottom = caption.end.y
+	_caption.add_theme_font_size_override("font_size", Grid.caption_font_size())
 
 
 ## Вызывается игроком. Единственная точка входа снаружи.

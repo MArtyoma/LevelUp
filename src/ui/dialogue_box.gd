@@ -22,6 +22,7 @@ extends CanvasLayer
 @onready var _choices: VBoxContainer = $Root/Panel/Layout/Choices
 @onready var _timer_bar: ProgressBar = $Root/Panel/Layout/TimerBar
 @onready var _continue_hint: Label = $Root/Panel/Layout/ContinueHint
+@onready var _panel: PanelContainer = $Root/Panel
 
 var _time_left: float = 0.0
 var _time_total: float = 0.0
@@ -30,12 +31,37 @@ var _time_total: float = 0.0
 func _ready() -> void:
 	_root.visible = false
 	set_process(false)
+	_apply_ui_scale()
 
 	EventBus.dialogue_started.connect(_on_started)
 	EventBus.dialogue_line_shown.connect(_on_line)
 	EventBus.dialogue_choices_offered.connect(_on_choices)
 	EventBus.duel_patience_changed.connect(_on_patience)
 	EventBus.dialogue_finished.connect(_on_finished)
+
+
+## Сцена нарисована под окно высотой 270 пикселей; при другом размере тайла
+## окно другое. Пересчитываем, чтобы окно диалога занимало ту же долю экрана.
+func _apply_ui_scale() -> void:
+	var scale := Grid.ui_scale()
+	if is_equal_approx(scale, 1.0):
+		return
+
+	_panel.offset_left = Grid.ui_length(8.0)
+	_panel.offset_top = Grid.ui_length(-74.0)
+	_panel.offset_right = Grid.ui_length(-8.0)
+	_panel.offset_bottom = Grid.ui_length(-8.0)
+
+	var settings := _speaker_label.label_settings
+	if settings != null:
+		settings = settings.duplicate() as LabelSettings
+		settings.font_size = Grid.ui_font_size(9)
+		_speaker_label.label_settings = settings
+
+	_patience_label.add_theme_font_size_override("font_size", Grid.ui_font_size(9))
+	_text_label.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
+	_continue_hint.add_theme_font_size_override("font_size", Grid.ui_font_size(7))
+	_timer_bar.custom_minimum_size = Vector2(0.0, Grid.ui_length(4.0))
 
 
 func _on_started(_dialogue_id: String, speaker: Dictionary) -> void:
@@ -63,7 +89,7 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 		# Размер шрифта задаётся в пикселях низкого разрешения: окно игры — 480x270,
 		# и всё, что больше 8-9, занимает пол-экрана. Когда artist поставит
 		# пиксельный шрифт темой, эту строку можно убрать.
-		button.add_theme_font_size_override("font_size", 8)
+		button.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
 		var index := int(choice["index"])
 		button.pressed.connect(func(): DialogueRunner.choose(index))
 		_choices.add_child(button)

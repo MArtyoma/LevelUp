@@ -55,6 +55,7 @@ static func validate_all(company: Dictionary, dialogues: Dictionary, quests: Dic
 	_check_company(company, report)
 	_check_dialogues(dialogues, company, quests, report)
 	_check_quests(quests, company, report)
+	_check_quests_are_obtainable(quests, dialogues, report)
 	_check_testability(company, quests, dialogues, report)
 	return report
 
@@ -174,6 +175,11 @@ static func _check_dialogues(dialogues: Dictionary, company: Dictionary,
 		var speaker: String = dlg.get("speaker", "")
 		if speaker and not emp_ids.has(speaker):
 			report.add_error("%s: диалог %s ведёт %s, а такого сотрудника нет" % [where, did, speaker])
+		elif speaker.is_empty():
+			# Диалог запускается только через NPC, а NPC находит его по speaker.
+			# Без speaker до этого разговора невозможно дойти в игре.
+			report.add_warning("%s: у диалога %s не указан \"speaker\" — запустить его в игре нечем"
+				% [where, did])
 
 		var nodes: Dictionary = dlg.get("nodes", {})
 		if nodes.is_empty():
@@ -217,6 +223,24 @@ static func _check_dialogues(dialogues: Dictionary, company: Dictionary,
 			if not has_correct:
 				report.add_error("%s: в дуэли %s ни один ответ не помечен \"correct\": true"
 					% [where, did])
+
+
+## Каждый квест должен кто-то выдавать. Квест, на который не ссылается ни один
+## диалог, игрок получить не сможет — он просто лежит в файле.
+static func _check_quests_are_obtainable(quests: Dictionary, dialogues: Dictionary,
+		report: Report) -> void:
+	var offered: Dictionary = {}
+	for dlg: Dictionary in dialogues.get("dialogues", []):
+		for node_id: String in dlg.get("nodes", {}):
+			for effect: Dictionary in _effects_of(dlg["nodes"][node_id]):
+				if String(effect.get("type", "")) == "start_quest":
+					offered[String(effect.get("quest", ""))] = true
+
+	for quest: Dictionary in quests.get("quests", []):
+		var qid: String = quest.get("id", "?")
+		if not offered.has(qid):
+			report.add_warning("data/quests.json: квест %s не выдаётся ни одним диалогом — "
+				% qid + "игрок не сможет его получить")
 
 
 static func _check_quests(quests: Dictionary, company: Dictionary, report: Report) -> void:
@@ -336,13 +360,18 @@ static func _check_testability(company: Dictionary, quests: Dictionary,
 
 # --- Мелкие помощники ---------------------------------------------------------
 
+## Действия, которые понимает DialogueRunner._apply_effect. Списки обязаны
+## совпадать: новое действие добавляется в оба места сразу.
+const KNOWN_EFFECTS := ["start_quest", "complete_objective", "grant_access",
+	"set_flag", "finish_game"]
+
+
 static func _check_effect(effect: Dictionary, quest_ids: Dictionary, where: String,
 		report: Report) -> void:
-	var known := ["start_quest", "complete_objective", "grant_access", "set_flag", "finish_game"]
 	var type: String = effect.get("type", "")
-	if not known.has(type):
+	if not KNOWN_EFFECTS.has(type):
 		report.add_error("%s: неизвестное действие \"%s\". Доступны: %s"
-			% [where, type, ", ".join(known)])
+			% [where, type, ", ".join(KNOWN_EFFECTS)])
 		return
 	if type in ["start_quest", "complete_objective"]:
 		var qid: String = effect.get("quest", "")

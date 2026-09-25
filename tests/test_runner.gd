@@ -14,6 +14,9 @@ const SUITES := [
 	preload("res://tests/test_data_validator.gd"),
 	preload("res://tests/test_quest_log.gd"),
 	preload("res://tests/test_dialogue_runner.gd"),
+	preload("res://tests/test_save_game.gd"),
+	preload("res://tests/test_grid.gd"),
+	preload("res://tests/test_level_scene.gd"),
 ]
 
 
@@ -37,6 +40,7 @@ func _ready() -> void:
 			var suite: TestCase = suite_script.new()
 			suite.before_each()
 			suite.call(method_name)
+			suite.after_each()
 
 			if suite.failures.is_empty():
 				passed += 1

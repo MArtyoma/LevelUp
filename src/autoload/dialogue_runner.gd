@@ -106,11 +106,17 @@ func _goto(node_id: String) -> void:
 		_finish("ok")
 		return
 
+	var is_repeat := node_id == _node_id
 	_node_id = node_id
 	var node: Dictionary = nodes[node_id]
 
-	for effect: Dictionary in node.get("effects", []):
-		_apply_effect(effect)
+	# Последствия реплики применяются один раз. Дуэль после промаха возвращается
+	# на ту же реплику (`on_wrong`), и без этой проверки квест выдавался бы
+	# заново на каждом круге. Сейчас действия идемпотентны и вреда бы не было,
+	# но первое же действие вида «минус единица репутации» сломало бы дуэль.
+	if not is_repeat:
+		for effect: Dictionary in node.get("effects", []):
+			_apply_effect(effect)
 
 	var speaker_name: String = GameData.get_employee(_dialogue.get("speaker", "")).get("name", "")
 	EventBus.dialogue_line_shown.emit(String(node.get("text", "")), speaker_name)

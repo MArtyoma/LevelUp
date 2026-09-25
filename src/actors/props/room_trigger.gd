@@ -12,13 +12,26 @@ extends Area2D
 ## Совпадает с id помещения в легенде компании: "room_sales", "room_hr".
 @export var room_id: String = ""
 
+## Размер зоны **в тайлах**, а не в пикселях. Так комната остаётся той же
+## комнатой при любом размере тайла.
+@export var size_in_tiles: Vector2i = Vector2i(9, 5)
+
+@onready var _shape: CollisionShape2D = $CollisionShape2D
+
 var _already_entered: bool = false
 
 
 func _ready() -> void:
+	_apply_grid()
 	set_process(false)
 	set_physics_process(false)
 	body_entered.connect(_on_body_entered)
+
+
+func _apply_grid() -> void:
+	var box := RectangleShape2D.new()
+	box.size = Vector2(size_in_tiles) * float(Grid.tile_size())
+	_shape.shape = box
 
 
 func _on_body_entered(body: Node2D) -> void:

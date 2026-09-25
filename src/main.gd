@@ -22,6 +22,10 @@ const PLAYER_SCENE := preload("res://src/actors/player/player.tscn")
 
 
 func _ready() -> void:
+	# Размер окна считается из размера тайла: сколько тайлов помещается на экран,
+	# записано в настройках проекта и не зависит от того, 16 там или 64.
+	get_window().content_scale_size = Grid.viewport_size()
+
 	if not GameData.is_loaded:
 		_show_data_error()
 		return
@@ -71,9 +75,17 @@ func _on_game_finished(reason: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		EventBus.game_finished.emit("quit")
-		get_tree().quit()
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	# Escape посреди разговора закрывает разговор, а не игру. Иначе участник
+	# замера, нажавший привычное «выйти из диалога», выходит из эксперимента,
+	# и прохождение приходится начинать заново.
+	if DialogueRunner.is_running:
+		DialogueRunner.stop()
+		get_viewport().set_input_as_handled()
+		return
+	EventBus.game_finished.emit("quit")
+	get_tree().quit()
 
 
 ## Экран ошибки данных. Нарочно уродливый и нарочно подробный.

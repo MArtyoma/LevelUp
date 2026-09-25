@@ -16,17 +16,42 @@ extends Area2D
 ## Что игрок видит, когда пропуска не хватает. Пустая строка — текст по умолчанию.
 @export var denied_text: String = ""
 
-@onready var _blocker: StaticBody2D = $Blocker
+## Какая клетка атласа тайлов рисуется как дверь. Меняется в инспекторе,
+## если artist переложит картинки в тайлсете.
+@export var atlas_cell: Vector2i = Vector2i(7, 0)
+
+@onready var _sprite: Sprite2D = $Sprite2D
+@onready var _shape: CollisionShape2D = $CollisionShape2D
+@onready var _blocker_shape: CollisionShape2D = $Blocker/CollisionShape2D
 
 var _is_open: bool = false
 
 
 func _ready() -> void:
+	_apply_grid()
 	add_to_group("interactable")
 	set_process(false)
 	set_physics_process(false)
 	EventBus.access_level_changed.connect(_on_access_level_changed)
 	_on_access_level_changed(QuestLog.access_level)
+
+
+## Дверь занимает ровно один тайл, какого бы размера он ни был.
+func _apply_grid() -> void:
+	var tile := float(Grid.tile_size())
+
+	var box := RectangleShape2D.new()
+	box.size = Vector2(tile, tile)
+	_shape.shape = box
+	_blocker_shape.shape = box
+
+	# Картинка берётся из того же атласа, что и карта. Копия нужна, чтобы
+	# у каждой двери был свой регион: сам подресурс из сцены — общий.
+	var atlas := _sprite.texture as AtlasTexture
+	if atlas != null:
+		atlas = atlas.duplicate() as AtlasTexture
+		atlas.region = Grid.atlas_region(atlas_cell)
+		_sprite.texture = atlas
 
 
 func interact(_player: Node2D) -> void:
@@ -53,8 +78,8 @@ func _on_access_level_changed(level: int) -> void:
 	_is_open = level >= required_access
 	# Открытая дверь перестаёт быть препятствием и перестаёт перехватывать
 	# взаимодействие — иначе игрок не сможет поговорить с тем, кто стоит за ней.
-	_blocker.set_deferred("process_mode",
-		Node.PROCESS_MODE_DISABLED if _is_open else Node.PROCESS_MODE_INHERIT)
-	$CollisionShape2D.set_deferred("disabled", _is_open)
-	$Blocker/CollisionShape2D.set_deferred("disabled", _is_open)
+	# set_deferred, потому что менять формы столкновений посреди кадра физики
+	# нельзя: Godot про это честно ругается.
+	_shape.set_deferred("disabled", _is_open)
+	_blocker_shape.set_deferred("disabled", _is_open)
 	visible = not _is_open

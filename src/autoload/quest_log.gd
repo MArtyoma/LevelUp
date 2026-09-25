@@ -171,11 +171,29 @@ func to_dict() -> Dictionary:
 	}
 
 
+## Восстановление из словаря. Ко всему относимся как к чужому файлу: его могли
+## поправить руками, он мог остаться от прошлой версии игры. Испорченное поле
+## пропускаем, а не роняем игру — билд на защите запускают один раз.
 func from_dict(data: Dictionary) -> void:
 	reset()
-	access_level = int(data.get("access_level", STARTING_ACCESS_LEVEL))
-	for quest_id: String in data.get("state", {}):
-		_state[quest_id] = int(data["state"][quest_id])
-	for quest_id: String in data.get("done_objectives", {}):
-		_done_objectives[quest_id] = data["done_objectives"][quest_id].duplicate()
-	_flags = data.get("flags", {}).duplicate()
+	var saved_access = data.get("access_level", STARTING_ACCESS_LEVEL)
+	if typeof(saved_access) in [TYPE_INT, TYPE_FLOAT]:
+		access_level = maxi(STARTING_ACCESS_LEVEL, int(saved_access))
+
+	# Переменные нарочно без типа. `var state: Dictionary = <число>` падает
+	# на самом присваивании, то есть раньше любой нашей проверки, — а смысл
+	# всей функции в том, чтобы пережить чужой испорченный файл.
+	var state = data.get("state", {})
+	if typeof(state) == TYPE_DICTIONARY:
+		for quest_id: String in state:
+			_state[quest_id] = clampi(int(state[quest_id]), State.NOT_STARTED, State.COMPLETED)
+
+	var done = data.get("done_objectives", {})
+	if typeof(done) == TYPE_DICTIONARY:
+		for quest_id: String in done:
+			if typeof(done[quest_id]) == TYPE_DICTIONARY:
+				_done_objectives[quest_id] = (done[quest_id] as Dictionary).duplicate()
+
+	var flags = data.get("flags", {})
+	if typeof(flags) == TYPE_DICTIONARY:
+		_flags = flags.duplicate()

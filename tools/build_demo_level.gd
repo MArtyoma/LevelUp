@@ -13,7 +13,6 @@ extends SceneTree
 ## один снизу. Настоящая планировка — зона level designer, и она должна сойтись
 ## с легендой writer (в каком кабинете какой отдел).
 
-const TILE := 16
 const MAP_WIDTH := 40
 const MAP_HEIGHT := 17
 
@@ -143,14 +142,14 @@ func _add_room_triggers() -> void:
 		var rect: Rect2i = room["rect"]
 		var trigger: Node2D = scene.instantiate()
 		trigger.name = "Trigger_" + String(room["id"])
+		var tile := float(Grid.tile_size())
 		trigger.position = Vector2(
-			(float(rect.position.x) + float(rect.size.x) * 0.5) * TILE,
-			(float(rect.position.y) + float(rect.size.y) * 0.5) * TILE)
+			(float(rect.position.x) + float(rect.size.x) * 0.5) * tile,
+			(float(rect.position.y) + float(rect.size.y) * 0.5) * tile)
 		trigger.set("room_id", String(room["id"]))
-		var shape: CollisionShape2D = trigger.get_node("CollisionShape2D")
-		var box := RectangleShape2D.new()
-		box.size = Vector2(rect.size) * TILE
-		shape.shape = box
+		# Размер зоны — в тайлах: при смене размера тайла комната остаётся
+		# той же комнатой, а не становится вчетверо меньше.
+		trigger.set("size_in_tiles", rect.size)
 		_root.add_child(trigger)
 		trigger.owner = _root
 
@@ -187,7 +186,8 @@ func _add_player_spawn() -> void:
 
 
 func _center_of(cell: Vector2i) -> Vector2:
-	return Vector2(cell) * TILE + Vector2(TILE, TILE) * 0.5
+	var tile := float(Grid.tile_size())
+	return Vector2(cell) * tile + Vector2(tile, tile) * 0.5
 
 
 func _save() -> void:
@@ -201,4 +201,5 @@ func _save() -> void:
 		push_error("Не удалось сохранить %s" % path)
 		quit(1)
 		return
-	print("Уровень собран: %s (%dx%d тайлов)" % [path, MAP_WIDTH, MAP_HEIGHT])
+	print("Уровень собран: %s — %dx%d тайлов по %d пикселей"
+		% [path, MAP_WIDTH, MAP_HEIGHT, Grid.tile_size()])

@@ -16,6 +16,7 @@ extends CanvasLayer
 
 func _ready() -> void:
 	_hint.text = ""
+	_apply_ui_scale()
 	EventBus.hint_shown.connect(_on_hint_shown)
 	EventBus.hint_hidden.connect(_on_hint_hidden)
 	EventBus.access_level_changed.connect(_on_access_changed)
@@ -28,6 +29,30 @@ func _ready() -> void:
 
 	_on_access_changed(QuestLog.access_level)
 	_refresh_quests()
+
+
+## Размеры в сценах интерфейса подобраны под окно высотой 270 пикселей.
+## При другом размере тайла окно другое — и всё пересчитывается, иначе
+## на тайле 32 подписи превращаются в муравьёв в углу экрана.
+func _apply_ui_scale() -> void:
+	var scale := Grid.ui_scale()
+	if is_equal_approx(scale, 1.0):
+		return
+
+	var settings := _hint.label_settings
+	if settings != null:
+		settings = settings.duplicate() as LabelSettings
+		settings.font_size = Grid.ui_font_size(8)
+		settings.outline_size = Grid.ui_font_size(3)
+		_hint.label_settings = settings
+	_hint.offset_top = Grid.ui_length(-22.0)
+	_hint.offset_bottom = Grid.ui_length(-8.0)
+
+	_access_label.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
+	_quest_panel.offset_left = Grid.ui_length(-132.0)
+	_quest_panel.offset_top = Grid.ui_length(6.0)
+	_quest_panel.offset_right = Grid.ui_length(-6.0)
+	_quest_panel.offset_bottom = Grid.ui_length(70.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -74,7 +99,7 @@ func _refresh_quests() -> void:
 func _add_row(text: String, is_secondary: bool) -> void:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 8)
+	label.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
 	if is_secondary:
 		label.modulate = Color(0.75, 0.8, 0.86)
 	_quest_list.add_child(label)

@@ -7,19 +7,17 @@ extends CharacterBody2D
 ##
 ## Почему именно так, а не иначе:
 ##
-## * **Скорость в пикселях, кратная тайлу.** 60 px/с при тайле 16 — это ровно
-##   3.75 тайла в секунду. Ровные числа здесь не эстетика: при виде сверху игрок
-##   должен успевать читать подписи над NPC, и подобранная один раз скорость
-##   больше не трогается «на глаз».
+## * **Ни одного размера в пикселях.** Скорость, коробка столкновений, радиус,
+##   с которого игрок дотягивается до NPC, смещение спрайта — всё берётся из
+##   `Grid` и выражено через размер тайла. Поменяли 16 на 32 в настройках
+##   проекта — персонаж проходит комнату за то же время и застревает там же,
+##   где застревал, то есть нигде.
 ## * **Спрайт — обычный Sprite2D с кадрами, а не AnimatedSprite2D.** Кадры листает
 ##   этот скрипт. Так анимация не требует ресурса `.tres`, который пришлось бы
 ##   пересобирать при каждой замене картинки: artist кладёт новый PNG с той же
 ##   сеткой 4x4 — и всё работает. Один файл вместо двух и ноль конфликтов в Git.
 ## * **Во время разговора игрок не ходит.** Проверяется одним флагом
 ##   `DialogueRunner.is_running`, а не отключением ввода в пяти местах.
-
-## Пикселей в секунду.
-const SPEED := 60.0
 
 ## Кадров анимации ходьбы в секунду.
 const ANIMATION_FPS := 8.0
@@ -32,6 +30,11 @@ const ROW_UP := 3
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _interaction_area: Area2D = $InteractionArea
+@onready var _body_shape: CollisionShape2D = $CollisionShape2D
+@onready var _reach_shape: CollisionShape2D = $InteractionArea/CollisionShape2D
+
+# Скорость берётся из Grid один раз: в _physics_process ей делать нечего.
+var _speed: float = 0.0
 
 ## Куда смотрит игрок. Пригодится, когда появится взаимодействие «перед собой».
 var facing: Vector2 = Vector2.DOWN
@@ -44,8 +47,32 @@ var _animation_time: float = 0.0
 
 
 func _ready() -> void:
+	_apply_grid()
 	_interaction_area.area_entered.connect(_on_reachable_entered)
 	_interaction_area.area_exited.connect(_on_reachable_exited)
+
+
+## Подгоняет всё под текущий размер тайла (см. `src/core/grid.gd`).
+##
+## Формы столкновений создаются заново, а не правятся по месту: в сцене они
+## лежат как подресурсы, и один и тот же объект достался бы всем копиям сразу.
+## Для игрока это неважно — он один, — но привычка менять общий ресурс однажды
+## аукнется на NPC, которых шесть.
+func _apply_grid() -> void:
+	_speed = Grid.player_speed()
+
+	var body := RectangleShape2D.new()
+	body.size = Grid.body_collision_size()
+	_body_shape.shape = body
+	_body_shape.position = Grid.body_collision_offset()
+
+	var reach := CircleShape2D.new()
+	reach.radius = Grid.reach_radius()
+	_reach_shape.shape = reach
+
+	_sprite.hframes = Grid.walk_frames()
+	_sprite.vframes = Grid.SHEET_ROWS
+	_sprite.offset = Grid.character_sprite_offset()
 
 
 func _physics_process(delta: float) -> void:
@@ -55,7 +82,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = direction * SPEED
+	velocity = direction * _speed
 	move_and_slide()
 
 	_update_facing(direction)
@@ -67,7 +94,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if DialogueRunner.is_running:
 		DialogueRunner.advance()
-	elif _current_target != null:
+	elif is_instance_valid(_current_target):
 		_current_target.interact(self)
 	get_viewport().set_input_as_handled()
 
@@ -86,10 +113,24 @@ func _on_reachable_exited(area: Area2D) -> void:
 	_refresh_target()
 
 
+## Цель могла исчезнуть с карты: предмет квеста после использования удаляется.
+## Обращение к удалённому узлу роняет игру, поэтому цель всегда проверяется.
+func _forget_invalid_target() -> void:
+	if _current_target != null and not is_instance_valid(_current_target):
+		_current_target = null
+
+
 ## Цель — ближайший объект из тех, до кого дотянулись. Если их несколько
 ## (NPC вплотную к двери), выбирать «какой-нибудь» нельзя: игрок ткнёт не туда
 ## и решит, что игра сломана.
 func _refresh_target() -> void:
+	_forget_invalid_target()
+	# В списке тоже могли остаться удалённые узлы: сигнал area_exited от узла,
+	# который освободили в этом же кадре, приходит не всегда.
+	for index in range(_reachable.size() - 1, -1, -1):
+		if not is_instance_valid(_reachable[index]):
+			_reachable.remove_at(index)
+
 	var nearest: Node2D = null
 	var nearest_distance := INF
 	for candidate in _reachable:
@@ -104,7 +145,7 @@ func _refresh_target() -> void:
 		return
 
 	# Подпись над головой зажигается только у того, к кому игрок реально подошёл.
-	if _current_target != null and _current_target.has_method("set_caption_visible"):
+	if is_instance_valid(_current_target) and _current_target.has_method("set_caption_visible"):
 		_current_target.set_caption_visible(false)
 	_current_target = nearest
 

@@ -17,6 +17,14 @@ func before_each() -> void:
 	pass
 
 
+## Вызывается после каждого теста — даже если тест провалился. Здесь возвращают
+## на место всё, что тест менял глобально: настройки проекта, файлы на диске.
+## Без этого один упавший тест портит все следующие, и искать причину приходится
+## не там, где она есть.
+func after_each() -> void:
+	pass
+
+
 func check(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
