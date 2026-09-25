@@ -16,13 +16,15 @@ extends CanvasLayer
 ## ни одного файла лида.
 
 @onready var _root: Control = $Root
-@onready var _speaker_label: Label = $Root/Panel/Layout/Header/Speaker
-@onready var _patience_label: Label = $Root/Panel/Layout/Header/Patience
-@onready var _text_label: Label = $Root/Panel/Layout/Text
-@onready var _choices: VBoxContainer = $Root/Panel/Layout/Choices
-@onready var _timer_bar: ProgressBar = $Root/Panel/Layout/TimerBar
-@onready var _continue_hint: Label = $Root/Panel/Layout/ContinueHint
+@onready var _speaker_label: Label = $Root/Panel/Body/Layout/Header/Speaker
+@onready var _patience_label: Label = $Root/Panel/Body/Layout/Header/Patience
+@onready var _text_label: Label = $Root/Panel/Body/Layout/Text
+@onready var _choices: VBoxContainer = $Root/Panel/Body/Layout/Choices
+@onready var _timer_bar: ProgressBar = $Root/Panel/Body/Layout/TimerBar
+@onready var _continue_hint: Label = $Root/Panel/Body/Layout/ContinueHint
 @onready var _panel: PanelContainer = $Root/Panel
+@onready var _portrait_frame: PanelContainer = $Root/Panel/Body/PortraitFrame
+@onready var _portrait: TextureRect = $Root/Panel/Body/PortraitFrame/Portrait
 
 var _time_left: float = 0.0
 var _time_total: float = 0.0
@@ -62,6 +64,7 @@ func _apply_ui_scale() -> void:
 	_text_label.add_theme_font_size_override("font_size", Grid.ui_font_size(8))
 	_continue_hint.add_theme_font_size_override("font_size", Grid.ui_font_size(7))
 	_timer_bar.custom_minimum_size = Vector2(0.0, Grid.ui_length(4.0))
+	_portrait.custom_minimum_size = Vector2.ONE * Grid.ui_length(48.0)
 
 
 func _on_started(_dialogue_id: String, speaker: Dictionary) -> void:
@@ -69,6 +72,22 @@ func _on_started(_dialogue_id: String, speaker: Dictionary) -> void:
 	_patience_label.text = ""
 	_speaker_label.text = "%s — %s" % [
 		speaker.get("name", "?"), speaker.get("role", "")]
+	_show_portrait(speaker)
+
+
+## Портрет собеседника (src/core/own_art.gd) на подложке его цвета из данных.
+## Портрета нет — рамка прячется, и текст занимает всю ширину, как раньше.
+func _show_portrait(speaker: Dictionary) -> void:
+	var texture := OwnArt.portrait(String(speaker.get("id", "")))
+	_portrait_frame.visible = texture != null
+	if texture == null:
+		return
+	_portrait.texture = texture
+	var style := _portrait_frame.get_theme_stylebox("panel") as StyleBoxFlat
+	if style != null and speaker.has("palette"):
+		style = style.duplicate() as StyleBoxFlat
+		style.bg_color = Color(String(speaker["palette"]))
+		_portrait_frame.add_theme_stylebox_override("panel", style)
 
 
 func _on_line(text: String, _speaker_name: String) -> void:
@@ -101,6 +120,23 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 		_start_timer(time_limit)
 	else:
 		_hide_timer()
+
+
+## E на вариантах ответа выбирает выделенный. Enter и пробел кнопка ловит сама
+## (они же ui_accept), а E — нет: без этого игрок, которому сказано «E — говорить»,
+## жмёт E на вариантах, и ничего не происходит. Сюда нажатие приходит раньше,
+## чем к игроку: окно ниже в дереве main.tscn.
+func _unhandled_input(event: InputEvent) -> void:
+	if not _root.visible or _choices.get_child_count() == 0:
+		return
+	if not event.is_action_pressed("interact"):
+		return
+	get_viewport().set_input_as_handled()
+	var focused := get_viewport().gui_get_focus_owner() as Button
+	if focused != null and focused.get_parent() == _choices:
+		focused.pressed.emit()
+	else:
+		(_choices.get_child(0) as Button).grab_focus()
 
 
 func _on_patience(left: int, total: int) -> void:
@@ -143,5 +179,9 @@ func _process(delta: float) -> void:
 
 
 func _clear_choices() -> void:
+	# Сначала вынуть из контейнера, потом удалить. queue_free удаляет только в конце
+	# кадра, и до того старая кнопка оставалась первой в списке: новые варианты
+	# отдавали фокус ей, она исчезала, и выбрать ответ с клавиатуры было нечем.
 	for child in _choices.get_children():
+		_choices.remove_child(child)
 		child.queue_free()
