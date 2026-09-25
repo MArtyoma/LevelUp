@@ -34,6 +34,8 @@ data/*.real.json
 # Генератор спрайтов (tools/art/): промежуточные картинки и кеш Python.
 # В репозиторий идут только выбранные спрайты в assets/.
 /art_out/
+# Черновики звуков (tools/audio/, docs/audio-pipeline.md) — туда же.
+/audio_out/
 __pycache__/
 *.pyc
 

@@ -44,6 +44,8 @@ docs/          как всё устроено и как это править
 | [`docs/data-format.md`](docs/data-format.md) | **writer** — как писать легенду, диалоги и квесты. Кода знать не нужно |
 | [`docs/architecture.md`](docs/architecture.md) | лиду и artist — как устроена игра и почему именно так |
 | [`docs/conventions.md`](docs/conventions.md) | всем — правила работы с Git, кодом и сценами |
+| [`docs/art-pipeline.md`](docs/art-pipeline.md) | artist и ИИ-агентам — черновики спрайтов нейросетью (`tools/art/`) |
+| [`docs/audio-pipeline.md`](docs/audio-pipeline.md) | всем и ИИ-агентам — звуки и музыка: ретро-генератор и нейросети (`tools/audio/`) |
 
 ## Команды
 
