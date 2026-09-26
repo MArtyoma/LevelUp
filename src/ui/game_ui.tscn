@@ -3,16 +3,16 @@
 [ext_resource type="Script" path="res://src/ui/game_ui.gd" id="1_ui"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_quests"]
-bg_color = Color(0.0784314, 0.101961, 0.145098, 0.784314)
+bg_color = Color(0.0784314, 0.101961, 0.145098, 0.921569)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.45098, 0.52549, 0.631373, 0.6)
-content_margin_left = 4.0
-content_margin_top = 3.0
-content_margin_right = 4.0
-content_margin_bottom = 3.0
+content_margin_left = 6.0
+content_margin_top = 5.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
 
 [sub_resource type="LabelSettings" id="LabelSettings_hint"]
 font_size = 8
@@ -40,15 +40,27 @@ grow_vertical = 0
 horizontal_alignment = 1
 label_settings = SubResource("LabelSettings_hint")
 
-[node name="QuestPanel" type="PanelContainer" parent="."]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -132.0
+[node name="Tracker" type="VBoxContainer" parent="."]
+offset_left = 6.0
 offset_top = 6.0
-offset_right = -6.0
+offset_right = 186.0
+offset_bottom = 60.0
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="QuestPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -70.0
+offset_right = 120.0
 offset_bottom = 70.0
-grow_horizontal = 0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_quests")
 
 [node name="Layout" type="VBoxContainer" parent="QuestPanel"]
@@ -62,7 +74,15 @@ text = "Пропуск: уровень 1"
 
 [node name="List" type="VBoxContainer" parent="QuestPanel/Layout"]
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 1
+
+[node name="Footer" type="Label" parent="QuestPanel/Layout"]
+modulate = Color(0.580392, 0.690196, 0.760784, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 7
+text = "J или Tab — закрыть"
+horizontal_alignment = 2
 
 [node name="RoomBanner" type="VBoxContainer" parent="."]
 visible = false
