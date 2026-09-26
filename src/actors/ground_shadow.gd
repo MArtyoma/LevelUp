@@ -28,7 +28,8 @@ static func attach(body: Node2D) -> GroundShadow:
 func _draw() -> void:
 	var tile := float(Grid.tile_size())
 	var radius := SIZE * tile * 0.5
-	# Центр — у нижнего края клетки, где стоят ноги (см. Grid.character_sprite_offset).
-	var center := Vector2(0.0, tile * 0.5 - radius.y)
+	# Центр — ровно на нижнем краю клетки, где стоят ноги (см. Grid.character_sprite_offset):
+	# стопы приходятся на середину овала, и половина тени выглядывает из-под них.
+	var center := Vector2(0.0, tile * 0.5)
 	draw_set_transform(center, 0.0, Vector2(1.0, radius.y / radius.x))
 	draw_circle(Vector2.ZERO, radius.x, COLOR)
