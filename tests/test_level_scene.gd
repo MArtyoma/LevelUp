@@ -203,7 +203,9 @@ func test_everyone_can_be_reached_on_foot() -> void:
 
 	var targets: Array = []
 	for npc: Npc in _find(_root, "Npc"):
-		targets.append(["сотруднику '%s'" % npc.employee_id, npc.position])
+		# К сидящему подходят спереди, через стол: клетка перед столом — на две ниже.
+		var front := Vector2(0.0, float(Grid.tile_size()) * 2.0) if npc.at_desk else Vector2.ZERO
+		targets.append(["сотруднику '%s'" % npc.employee_id, npc.position + front])
 	for object: QuestObject in _find(_root, "QuestObject"):
 		targets.append(["предмету '%s'" % object.name, object.position])
 	for target: Array in targets:
@@ -213,6 +215,32 @@ func test_everyone_can_be_reached_on_foot() -> void:
 			near = near or reached.has(cell + step)
 		check(near, "к %s не подойти от точки старта: проход перегорожен мебелью или стеной"
 			% target[0])
+
+
+func test_seated_npc_has_a_desk_and_can_be_talked_to_across_it() -> void:
+	# Сотрудника с галочкой «за столом» пересадили, а стол остался на месте —
+	# он сидит «в воздухе», и ноги у него закрывает пол. И наоборот: поговорить
+	# через стол можно, только если зона разговора дотягивается до переднего края.
+	if _root == null:
+		return
+	var walls := _root.get_node_or_null("Walls") as TileMapLayer
+	var tile := float(Grid.tile_size())
+	for npc: Npc in _find(_root, "Npc"):
+		if not npc.at_desk:
+			continue
+		var cell := walls.local_to_map(npc.position)
+		for dx in [-1, 0, 1]:
+			var atlas := walls.get_cell_atlas_coords(cell + Vector2i(dx, 1))
+			check(atlas.y == 3 and atlas.x in [1, 2, 3],
+				"'%s' сидит за столом, а под ним в клетке %s не рабочее место"
+					% [npc.employee_id, cell + Vector2i(dx, 1)])
+		# Игрок стоит перед столом, через клетку от сотрудника.
+		var player_center := Vector2(0.0, tile * 2.0)
+		var area := Grid.desk_reach_rect()
+		var nearest := Vector2(clampf(player_center.x, area.position.x, area.end.x),
+			clampf(player_center.y, area.position.y, area.end.y))
+		check(nearest.distance_to(player_center) < Grid.reach_radius(),
+			"с '%s' не заговорить через стол: зона разговора не дотягивается" % npc.employee_id)
 
 
 # --- Помощники ----------------------------------------------------------------

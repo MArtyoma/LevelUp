@@ -130,6 +130,55 @@ def desk(c):
     c.px(12, 7, "orange")
 
 
+# Рабочее место на три клетки: за ним сидит сотрудник (src/actors/npc/npc.gd,
+# `at_desk`). Столешница начинается с 3-й строки — всё, что ниже, закрывает
+# сидящего по пояс. Выше 3-й строки прозрачно, кроме монитора в левой клетке:
+# в средней клетке сидит человек, и монитор перед ним закрыл бы лицо.
+def _workstation_top(c, left_edge, right_edge):
+    c.rect(0, 3, T, 8, "white")          # столешница
+    c.rect(0, 11, T, 2, "steel")         # передний торец
+    c.rect(0, 3, T, 1, "slate")
+    c.rect(0, 12, T, 1, "slate")
+    if left_edge:
+        c.rect(0, 3, 1, 10, "slate")
+        c.rect(1, 13, 1, 2, "slate")     # ножка
+    if right_edge:
+        c.rect(T - 1, 3, 1, 10, "slate")
+        c.rect(T - 2, 13, 1, 2, "slate")
+
+
+def workstation_left(c):
+    _workstation_top(c, True, False)
+    c.rect(3, 0, 11, 8, "ink")           # монитор со спины: к сотруднику экраном
+    c.rect(4, 1, 9, 6, "slate")
+    c.rect(4, 1, 9, 1, "steel")          # блик по верхней кромке
+    c.rect(7, 8, 3, 1, "ink")            # подставка
+    c.rect(2, 9, 3, 1, "dusk")           # провод
+    c.rect(5, 8, 2, 1, "dusk")
+
+
+def workstation_middle(c):
+    _workstation_top(c, False, False)
+    c.rect(3, 4, 10, 2, "dusk")          # клавиатура у самого края, где руки
+    c.rect(4, 4, 8, 1, "slate")
+    c.rect(1, 7, 5, 3, "floor")          # бумаги
+    c.px(2, 8, "steel")
+    c.px(3, 8, "steel")
+    c.rect(10, 7, 3, 3, "floor")         # блокнот
+    c.rect(10, 7, 3, 1, "red")
+
+
+def workstation_right(c):
+    _workstation_top(c, False, True)
+    c.rect(4, 5, 7, 4, "ink")            # телефон
+    c.rect(5, 6, 5, 2, "slate")
+    c.rect(4, 4, 7, 1, "dusk")           # трубка
+    c.px(6, 7, "lime")                   # огонёк линии
+    c.rect(12, 5, 2, 3, "red")           # кружка
+    c.px(12, 5, "orange")
+    c.rect(2, 9, 3, 1, "ink")            # провод трубки
+
+
 def chair(c):
     c.rect(4, 3, 8, 3, "ink")            # спинка
     c.rect(5, 3, 6, 1, "dusk")
@@ -288,6 +337,7 @@ DRAW = {
     (4, 0): desk, (5, 0): chair, (6, 0): plant, (7, 0): door,
     (0, 1): cabinet, (1, 1): cooler, (2, 1): printer, (3, 1): rug,
     (4, 1): box, (5, 1): folder, (6, 1): wall_face,
+    (1, 3): workstation_left, (2, 3): workstation_middle, (3, 3): workstation_right,
 }
 
 

@@ -34,6 +34,11 @@ extends Area2D
 ## в кашу, а разобрать, кто есть кто, игра должна помогать, а не мешать.
 @export var show_caption: bool = true
 
+## Сидит за рабочим местом — оно в клетке прямо под ним (тайлы (1..3, 3) атласа).
+## Спрайт опускается, стол закрывает ноги; заговорить можно через стол; вместо
+## «дыхания» — печатает. Ставит галочку тот, кто сажает сотрудника за стол, — level designer.
+@export var at_desk: bool = false
+
 @onready var _sprite: Sprite2D = $Sprite2D
 # У подписи z_index = 1 (в сцене): NPC сортируется по Y, и подпись над головой
 # сортировалась бы по своей Y — как предмет на 2 тайла выше. Её закрывали бы
@@ -44,17 +49,28 @@ extends Area2D
 
 var _employee: Dictionary = {}
 var _marker: QuestMarker
+var _attentive: bool = false
+var _typing_left: int = 0
 
 ## «Дыхание»: раз в столько секунд — следующий кадр первого ряда листа
 ## (tools/art/make_sheet.py --idle: вдох — один кадр из четырёх).
 const IDLE_STEP_SECONDS := 0.45
+
+## Печать за столом: кадры 0 и 1 первого ряда (плечи на пиксель ниже) через
+## столько секунд, очередями по TYPING_BURST ударов с паузами — иначе это
+## не печать, а дрожь.
+const TYPING_STEP_SECONDS := 0.12
+const TYPING_BURST := Vector2i(6, 18)
+const TYPING_PAUSE := Vector2i(8, 25)
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	_apply_grid()
-	GroundShadow.attach(self)
+	# Тень сидящего закрыта столом.
+	if not at_desk:
+		GroundShadow.attach(self)
 	add_to_group("interactable")
 	# NPC ничего не делает каждый кадр: он реагирует только на то, что к нему подошли.
 	# Двенадцать спящих узлов вместо двенадцати работающих — мелочь, которая
@@ -71,9 +87,16 @@ func _ready() -> void:
 ## все шесть сотрудников делили бы одну коробку столкновений — и изменение
 ## у одного меняло бы её у всех.
 func _apply_grid() -> void:
-	var reach := CircleShape2D.new()
-	reach.radius = Grid.interactable_radius()
-	_reach_shape.shape = reach
+	if at_desk:
+		var desk_reach := RectangleShape2D.new()
+		var area := Grid.desk_reach_rect()
+		desk_reach.size = area.size
+		_reach_shape.shape = desk_reach
+		_reach_shape.position = area.get_center()
+	else:
+		var reach := CircleShape2D.new()
+		reach.radius = Grid.interactable_radius()
+		_reach_shape.shape = reach
 
 	var blocker := RectangleShape2D.new()
 	blocker.size = Grid.body_collision_size()
@@ -82,9 +105,10 @@ func _apply_grid() -> void:
 
 	_sprite.hframes = Grid.walk_frames()
 	_sprite.vframes = Grid.SHEET_ROWS
-	_sprite.offset = Grid.character_sprite_offset()
+	_sprite.offset = Grid.character_sprite_offset() + Vector2(0.0, _seat())
 
 	var caption := Grid.caption_rect()
+	caption.position.y += _seat()
 	_caption.offset_left = caption.position.x
 	_caption.offset_top = caption.position.y
 	_caption.offset_right = caption.end.x
@@ -124,9 +148,15 @@ func _refresh() -> void:
 	if own != null:
 		_sprite.texture = own
 		_sprite.modulate = Color.WHITE
-		_start_idle()
 	elif _employee.has("palette"):
 		_sprite.modulate = Color(String(_employee["palette"]))
+	# За столом — печатает, с любым рисунком: в кадре 1 и «вдоха», и шага общего
+	# листа корпус на пиксель ниже, а ноги за столом не видны. Стоя — дышит,
+	# и только со своим рисунком: общий лист — это шаг, NPC шагал бы на месте.
+	if at_desk:
+		_start_typing()
+	elif own != null:
+		_start_idle()
 
 	_caption.text = String(_employee.get("name", ""))
 	_caption.visible = false
@@ -136,6 +166,10 @@ func _refresh() -> void:
 func set_caption_visible(value: bool) -> void:
 	_caption.visible = value and show_caption
 	_place_marker()
+	# Игрок подошёл — отрывается от клавиатуры и смотрит на него.
+	_attentive = value
+	if value and at_desk:
+		_sprite.frame_coords.x = 0
 
 
 # --- Значок «!» / «?» над головой ------------------------------------------------
@@ -165,7 +199,11 @@ func _place_marker() -> void:
 		return
 	var bottom := Grid.caption_rect().position.y if _caption.visible \
 		else float(Grid.tile_size()) * 0.5 - float(Grid.character_frame().y)
-	_marker.position = Vector2(0.0, bottom - _marker.height() * 0.5)
+	_marker.position = Vector2(0.0, bottom + _seat() - _marker.height() * 0.5)
+
+
+func _seat() -> float:
+	return Grid.seated_drop() if at_desk else 0.0
 
 
 ## Проверка в редакторе: существует ли такой сотрудник в данных.
@@ -203,3 +241,34 @@ func _start_idle() -> void:
 		_sprite.frame_coords.x = (_sprite.frame_coords.x + 1) % _sprite.hframes)
 	add_child(timer)
 	timer.start()
+
+
+## Печать очередями: несколько ударов, пауза, снова. Длины очереди и паузы —
+## случайные в пределах TYPING_BURST и TYPING_PAUSE, чтобы соседи по кабинету
+## не печатали в такт. Таймер, а не _process: как и дыхание.
+func _start_typing() -> void:
+	if get_node_or_null("TypingTimer") != null:
+		return
+	var timer := Timer.new()
+	timer.name = "TypingTimer"
+	timer.wait_time = TYPING_STEP_SECONDS
+	timer.timeout.connect(_type_step)
+	add_child(timer)
+	# Первая очередь — не сразу и не у всех одновременно.
+	_typing_left = -randi_range(0, TYPING_PAUSE.y)
+	timer.start()
+
+
+func _type_step() -> void:
+	if _attentive:
+		return
+	if _typing_left > 0:
+		_typing_left -= 1
+		_sprite.frame_coords.x = 1 - _sprite.frame_coords.x
+		if _typing_left == 0:
+			_typing_left = -randi_range(TYPING_PAUSE.x, TYPING_PAUSE.y)
+	else:
+		_sprite.frame_coords.x = 0
+		_typing_left += 1
+		if _typing_left == 0:
+			_typing_left = randi_range(TYPING_BURST.x, TYPING_BURST.y)

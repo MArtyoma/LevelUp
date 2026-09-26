@@ -45,6 +45,10 @@ const TILES := [
 	{ "cell": Vector2i(6, 2), "name": "кубок",     "solid": Vector2(0.5, 0.5) },
 	{ "cell": Vector2i(7, 2), "name": "диван",     "solid": Vector2(1.0, 0.625) },
 	{ "cell": Vector2i(0, 3), "name": "доска объявлений на стене", "solid": Vector2(1.0, 1.0) },
+	# Рабочее место на три клетки: за ним сидит сотрудник (npc.gd, `at_desk`).
+	{ "cell": Vector2i(1, 3), "name": "рабочее место, монитор", "solid": Vector2(1.0, 0.625) },
+	{ "cell": Vector2i(2, 3), "name": "рабочее место, клавиатура", "solid": Vector2(1.0, 0.625) },
+	{ "cell": Vector2i(3, 3), "name": "рабочее место, телефон", "solid": Vector2(1.0, 0.625) },
 ]
 
 

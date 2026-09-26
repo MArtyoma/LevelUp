@@ -34,6 +34,8 @@ const T_FLIPCHART := Vector2i(5, 2)
 const T_TROPHY := Vector2i(6, 2)
 const T_SOFA := Vector2i(7, 2)
 const T_NOTICE_BOARD := Vector2i(0, 3)
+## Рабочее место на три клетки: монитор, клавиатура, телефон.
+const T_WORKSTATION := [Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3)]
 
 ## Коридор: через него соединяются все кабинеты.
 const CORRIDOR := Rect2i(1, 7, 38, 3)
@@ -51,7 +53,7 @@ const ROOMS := [
 		"decor": [[Vector2i(2, 0), T_FLIPCHART], [Vector2i(6, 0), T_TROPHY]] },
 	{ "id": "room_it",      "rect": Rect2i(21, 1, 8, 5),  "door": Vector2i(24, 6),
 		"decor": [[Vector2i(1, 0), T_SERVER], [Vector2i(2, 0), T_SERVER],
-			[Vector2i(5, 4), T_BOX]] },
+			[Vector2i(7, 3), T_BOX]] },
 	{ "id": "room_admin",   "rect": Rect2i(30, 1, 9, 5),  "door": Vector2i(34, 6), "access": 2,
 		"decor": [[Vector2i(1, 0), T_BOOKSHELF], [Vector2i(6, 0), T_GLOBE]] },
 	{ "id": "room_finance", "rect": Rect2i(11, 11, 9, 5), "door": Vector2i(15, 10),
@@ -64,14 +66,15 @@ const CORRIDOR_DECOR := [
 	[Vector2i(20, 6), T_NOTICE_BOARD],
 ]
 
-## Кто где сидит. id сотрудника — из data/company.json.
+## Кто где сидит. id сотрудника — из data/company.json. `desk` — сидит за рабочим
+## местом: оно ставится в клетки под ним (от x-1 до x+1), а NPC получает `at_desk`.
 const NPCS := [
-	{ "employee": "emp_mironova", "cell": Vector2i(5, 3) },
-	{ "employee": "emp_pavlov",   "cell": Vector2i(15, 3) },
-	{ "employee": "emp_kim",      "cell": Vector2i(23, 3) },
-	{ "employee": "emp_sokolov",  "cell": Vector2i(26, 3) },
-	{ "employee": "emp_koroleva", "cell": Vector2i(34, 3) },
-	{ "employee": "emp_zaytseva", "cell": Vector2i(15, 13) },
+	{ "employee": "emp_mironova", "cell": Vector2i(5, 3),   "desk": true },
+	{ "employee": "emp_pavlov",   "cell": Vector2i(15, 3),  "desk": true },
+	{ "employee": "emp_kim",      "cell": Vector2i(23, 3),  "desk": true },
+	{ "employee": "emp_sokolov",  "cell": Vector2i(26, 3),  "desk": true },
+	{ "employee": "emp_koroleva", "cell": Vector2i(34, 3),  "desk": true },
+	{ "employee": "emp_zaytseva", "cell": Vector2i(15, 13), "desk": true },
 ]
 
 const PLAYER_SPAWN := Vector2i(5, 8)
@@ -199,6 +202,11 @@ func _add_npcs() -> void:
 		npc.name = "Npc_" + String(entry["employee"])
 		npc.position = _center_of(entry["cell"])
 		npc.set("employee_id", String(entry["employee"]))
+		if entry.get("desk", false):
+			npc.set("at_desk", true)
+			var cell: Vector2i = entry["cell"]
+			for i in T_WORKSTATION.size():
+				_walls.set_cell(cell + Vector2i(i - 1, 1), 0, T_WORKSTATION[i])
 		_root.add_child(npc)
 		npc.owner = _root
 
