@@ -26,8 +26,19 @@ extends CanvasLayer
 @onready var _portrait_frame: PanelContainer = $Root/Panel/Body/PortraitFrame
 @onready var _portrait: TextureRect = $Root/Panel/Body/PortraitFrame/Portrait
 
+## Скорость печати реплики, букв в секунду. 0 — реплика появляется сразу целиком.
+## E во время печати дописывает реплику сразу: кто читает быстро, не ждёт.
+@export var letters_per_second: float = 50.0
+
+## Щелчок голоса собеседника — на каждой такой по счёту букве.
+const LETTERS_PER_BLIP := 4
+
 var _time_left: float = 0.0
 var _time_total: float = 0.0
+var _typing: bool = false
+var _typed: float = 0.0
+# Дуэль узнаём по первому сообщению о терпении — оно приходит до первой реплики.
+var _in_duel: bool = false
 
 
 func _ready() -> void:
@@ -69,6 +80,7 @@ func _apply_ui_scale() -> void:
 
 func _on_started(_dialogue_id: String, speaker: Dictionary) -> void:
 	_root.visible = true
+	_in_duel = false
 	_patience_label.text = ""
 	_speaker_label.text = "%s — %s" % [
 		speaker.get("name", "?"), speaker.get("role", "")]
@@ -93,8 +105,24 @@ func _show_portrait(speaker: Dictionary) -> void:
 func _on_line(text: String, _speaker_name: String) -> void:
 	_text_label.text = text
 	_clear_choices()
-	_continue_hint.visible = true
 	_hide_timer()
+	# В дуэли реплика появляется сразу: время на ответ уже идёт, и тратить его
+	# на ожидание печати нечестно.
+	_typing = letters_per_second > 0.0 and not _in_duel
+	_typed = 0.0
+	_text_label.visible_characters = 0 if _typing else -1
+	_continue_hint.visible = not _typing
+	_update_processing()
+
+
+## Дописать реплику сразу и показать то, что ждало конца печати.
+func _finish_typing() -> void:
+	_typing = false
+	_text_label.visible_characters = -1
+	_choices.visible = true
+	_continue_hint.visible = _choices.get_child_count() == 0
+	_focus_first_choice()
+	_update_processing()
 
 
 func _on_choices(choices: Array, time_limit: float) -> void:
@@ -115,12 +143,10 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 			DialogueRunner.choose(index))
 		_choices.add_child(button)
 
-	if _choices.get_child_count() > 0:
-		_choices.get_child(0).grab_focus()
-	# Щелчок при переходе между вариантами — только после первого фокуса:
-	# сам факт появления вариантов не должен щёлкать поверх голоса собеседника.
-	for button in _choices.get_children():
-		(button as Button).focus_entered.connect(Sound.play.bind("ui_select"))
+	# Пока реплика печатается, вариантов не видно: иначе их читают вместо реплики.
+	_choices.visible = not _typing
+	if not _typing:
+		_focus_first_choice()
 
 	if time_limit > 0.0:
 		_start_timer(time_limit)
@@ -128,14 +154,30 @@ func _on_choices(choices: Array, time_limit: float) -> void:
 		_hide_timer()
 
 
+func _focus_first_choice() -> void:
+	if _choices.get_child_count() == 0:
+		return
+	_choices.get_child(0).grab_focus()
+	# Щелчок при переходе между вариантами — только после первого фокуса:
+	# сам факт появления вариантов не должен щёлкать поверх голоса собеседника.
+	for button in _choices.get_children():
+		var click := Sound.play.bind("ui_select")
+		if not (button as Button).focus_entered.is_connected(click):
+			(button as Button).focus_entered.connect(click)
+
+
 ## E на вариантах ответа выбирает выделенный. Enter и пробел кнопка ловит сама
 ## (они же ui_accept), а E — нет: без этого игрок, которому сказано «E — говорить»,
 ## жмёт E на вариантах, и ничего не происходит. Сюда нажатие приходит раньше,
 ## чем к игроку: окно ниже в дереве main.tscn.
 func _unhandled_input(event: InputEvent) -> void:
-	if not _root.visible or _choices.get_child_count() == 0:
+	if not _root.visible:
 		return
-	if not event.is_action_pressed("interact"):
+	if _typing and (event.is_action_pressed("interact") or event.is_action_pressed("ui_accept")):
+		get_viewport().set_input_as_handled()
+		_finish_typing()
+		return
+	if _choices.get_child_count() == 0 or not event.is_action_pressed("interact"):
 		return
 	get_viewport().set_input_as_handled()
 	var focused := get_viewport().gui_get_focus_owner() as Button
@@ -146,12 +188,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_patience(left: int, total: int) -> void:
+	_in_duel = true
 	# Терпение руководителя — кружки, а не число: читается мгновенно (D-002).
 	_patience_label.text = "  " + "●".repeat(maxi(left, 0)) + "○".repeat(maxi(total - left, 0))
 
 
 func _on_finished(_dialogue_id: String, outcome: String) -> void:
 	_root.visible = false
+	_typing = false
 	_clear_choices()
 	_hide_timer()
 	if outcome == "duel_lost":
@@ -169,19 +213,37 @@ func _start_timer(limit: float) -> void:
 	_timer_bar.max_value = limit
 	_timer_bar.value = limit
 	_timer_bar.visible = true
-	set_process(true)
+	_update_processing()
 
 
 func _hide_timer() -> void:
 	_timer_bar.visible = false
-	set_process(false)
+	_update_processing()
+
+
+# Каждый кадр окно работает только пока печатает реплику или идёт время дуэли.
+func _update_processing() -> void:
+	set_process(_typing or (_timer_bar.visible and _time_left > 0.0))
 
 
 func _process(delta: float) -> void:
-	_time_left = maxf(_time_left - delta, 0.0)
-	_timer_bar.value = _time_left
-	if _time_left <= 0.0:
-		set_process(false)
+	if _typing:
+		_type(delta)
+	if _timer_bar.visible:
+		_time_left = maxf(_time_left - delta, 0.0)
+		_timer_bar.value = _time_left
+	_update_processing()
+
+
+func _type(delta: float) -> void:
+	var before := int(_typed)
+	_typed += delta * letters_per_second
+	var shown := int(_typed)
+	_text_label.visible_characters = shown
+	if shown / LETTERS_PER_BLIP > before / LETTERS_PER_BLIP:
+		Sound.talk()
+	if shown >= _text_label.get_total_character_count():
+		_finish_typing()
 
 
 func _clear_choices() -> void:

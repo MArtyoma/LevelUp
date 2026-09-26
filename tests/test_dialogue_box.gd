@@ -13,6 +13,9 @@ func before_each() -> void:
 	DialogueRunner.stop()
 	QuestLog.reset()
 	_box = (load("res://src/ui/dialogue_box.tscn") as PackedScene).instantiate()
+	# Печать по буквам выключена: кадры в тестах не идут, реплика не допечаталась бы.
+	# Сама печать — в test_typing_*.
+	_box.letters_per_second = 0.0
 	(Engine.get_main_loop() as SceneTree).current_scene.add_child(_box)
 
 
@@ -55,3 +58,35 @@ func test_interact_key_picks_the_highlighted_choice() -> void:
 	DialogueRunner.advance()
 	_interact()
 	check(QuestLog.is_active("q_onboarding"), "E на варианте «Понял, иду» не выбрал его")
+
+
+func test_typing_hides_choices_until_the_line_is_read() -> void:
+	# Варианты под недопечатанной репликой читают вместо реплики — а реплика
+	# и есть то, чему игра учит.
+	_box.letters_per_second = 50.0
+	DialogueRunner.start("dlg_mironova")
+	DialogueRunner.advance()                      # реплика с вариантами
+	var choices: Control = _box.get_node("Root/Panel/Body/Layout/Choices")
+	check(not choices.visible, "варианты видны, пока реплика ещё печатается")
+
+	_box._process(0.2)
+	var text: Label = _box.get_node("Root/Panel/Body/Layout/Text")
+	check(text.visible_characters > 0 and text.visible_characters < text.text.length(),
+		"за 0.2 с должна напечататься часть реплики, а видно %d букв" % text.visible_characters)
+
+	_interact()                                   # первое E — дописать
+	check(choices.visible, "E не дописал реплику: вариантов не видно")
+	check(not QuestLog.is_active("q_onboarding"), "E во время печати сразу выбрал ответ")
+	check(_focused_choice() != null, "после печати на вариантах нет выделенного")
+	_interact()                                   # второе E — выбрать
+	check(QuestLog.is_active("q_onboarding"), "второе E не выбрало вариант")
+
+
+func test_duel_line_is_shown_at_once() -> void:
+	# В дуэли идёт время на ответ: ждать печать нечестно.
+	_box.letters_per_second = 50.0
+	DialogueRunner.start("dlg_pavlov")
+	var text: Label = _box.get_node("Root/Panel/Body/Layout/Text")
+	equals(text.visible_characters, -1, "в дуэли реплика должна появиться сразу целиком")
+	check((_box.get_node("Root/Panel/Body/Layout/Choices") as Control).visible,
+		"в дуэли варианты должны быть видны сразу")
