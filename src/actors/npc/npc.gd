@@ -51,6 +51,11 @@ var _employee: Dictionary = {}
 var _marker: QuestMarker
 var _attentive: bool = false
 var _typing_left: int = 0
+var _seated: bool = false
+var _shadow: GroundShadow
+
+## Занят делом (телефон, отошёл к шкафу — src/actors/npc/npc_routine.gd): не печатает.
+var busy: bool = false
 
 ## «Дыхание»: раз в столько секунд — следующий кадр первого ряда листа
 ## (tools/art/make_sheet.py --idle: вдох — один кадр из четырёх).
@@ -67,10 +72,9 @@ const TYPING_PAUSE := Vector2i(8, 25)
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+	_seated = at_desk
 	_apply_grid()
-	# Тень сидящего закрыта столом.
-	if not at_desk:
-		GroundShadow.attach(self)
+	_shadow = GroundShadow.attach(self)
 	add_to_group("interactable")
 	# NPC ничего не делает каждый кадр: он реагирует только на то, что к нему подошли.
 	# Двенадцать спящих узлов вместо двенадцати работающих — мелочь, которая
@@ -79,6 +83,8 @@ func _ready() -> void:
 	set_physics_process(false)
 	_refresh()
 	_add_marker()
+	_apply_seat()
+	_add_routine()
 
 
 ## Подгоняет размеры под текущий размер тайла (см. `src/core/grid.gd`).
@@ -87,7 +93,27 @@ func _ready() -> void:
 ## все шесть сотрудников делили бы одну коробку столкновений — и изменение
 ## у одного меняло бы её у всех.
 func _apply_grid() -> void:
-	if at_desk:
+	var blocker := RectangleShape2D.new()
+	blocker.size = Grid.body_collision_size()
+	_blocker_shape.shape = blocker
+	_blocker_shape.position = Grid.body_collision_offset()
+
+	_sprite.hframes = Grid.walk_frames()
+	_sprite.vframes = Grid.SHEET_ROWS
+	_caption.add_theme_font_size_override("font_size", Grid.caption_font_size())
+
+
+## Сесть за стол или встать. Сидящий ниже на Grid.seated_drop() (ноги за столом),
+## без тени (её закрывает стол), и заговорить с ним можно через стол.
+func set_seated(value: bool) -> void:
+	if value == _seated:
+		return
+	_seated = value
+	_apply_seat()
+
+
+func _apply_seat() -> void:
+	if _seated:
 		var desk_reach := RectangleShape2D.new()
 		var area := Grid.desk_reach_rect()
 		desk_reach.size = area.size
@@ -97,23 +123,18 @@ func _apply_grid() -> void:
 		var reach := CircleShape2D.new()
 		reach.radius = Grid.interactable_radius()
 		_reach_shape.shape = reach
+		_reach_shape.position = Vector2.ZERO
 
-	var blocker := RectangleShape2D.new()
-	blocker.size = Grid.body_collision_size()
-	_blocker_shape.shape = blocker
-	_blocker_shape.position = Grid.body_collision_offset()
-
-	_sprite.hframes = Grid.walk_frames()
-	_sprite.vframes = Grid.SHEET_ROWS
 	_sprite.offset = Grid.character_sprite_offset() + Vector2(0.0, _seat())
-
 	var caption := Grid.caption_rect()
 	caption.position.y += _seat()
 	_caption.offset_left = caption.position.x
 	_caption.offset_top = caption.position.y
 	_caption.offset_right = caption.end.x
 	_caption.offset_bottom = caption.end.y
-	_caption.add_theme_font_size_override("font_size", Grid.caption_font_size())
+	if _shadow != null:
+		_shadow.visible = not _seated
+	_place_marker()
 
 
 ## Вызывается игроком. Единственная точка входа снаружи.
@@ -148,6 +169,8 @@ func _refresh() -> void:
 	if own != null:
 		_sprite.texture = own
 		_sprite.modulate = Color.WHITE
+		# Лист сотрудника бывает выше общего: у того, кто ходит, рядов шесть.
+		_sprite.vframes = maxi(1, own.get_height() / Grid.character_frame().y)
 	elif _employee.has("palette"):
 		_sprite.modulate = Color(String(_employee["palette"]))
 	# За столом — печатает, с любым рисунком: в кадре 1 и «вдоха», и шага общего
@@ -168,8 +191,8 @@ func set_caption_visible(value: bool) -> void:
 	_place_marker()
 	# Игрок подошёл — отрывается от клавиатуры и смотрит на него.
 	_attentive = value
-	if value and at_desk:
-		_sprite.frame_coords.x = 0
+	if value and _seated and not busy:
+		_sprite.frame_coords = Vector2i(0, 0)
 
 
 # --- Значок «!» / «?» над головой ------------------------------------------------
@@ -203,7 +226,17 @@ func _place_marker() -> void:
 
 
 func _seat() -> float:
-	return Grid.seated_drop() if at_desk else 0.0
+	return Grid.seated_drop() if _seated else 0.0
+
+
+## Распорядок (телефон, шкаф) — только у сидящего за столом и только если в листе
+## есть кадры ходьбы и телефона: у общего спрайта их нет.
+func _add_routine() -> void:
+	if not at_desk or _sprite.vframes < NpcRoutine.SHEET_ROWS:
+		return
+	var routine := NpcRoutine.new()
+	routine.setup(self, _sprite)
+	add_child(routine)
 
 
 ## Проверка в редакторе: существует ли такой сотрудник в данных.
@@ -260,7 +293,7 @@ func _start_typing() -> void:
 
 
 func _type_step() -> void:
-	if _attentive:
+	if _attentive or busy or not _seated:
 		return
 	if _typing_left > 0:
 		_typing_left -= 1

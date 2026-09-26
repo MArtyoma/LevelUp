@@ -243,6 +243,27 @@ func test_seated_npc_has_a_desk_and_can_be_talked_to_across_it() -> void:
 			"с '%s' не заговорить через стол: зона разговора не дотягивается" % npc.employee_id)
 
 
+func test_errands_are_reachable_and_inside_the_room() -> void:
+	# Маркер «куда отойти» за шкафом или в соседнем кабинете: сотрудник либо
+	# не дойдёт, либо уйдёт из кабинета — и игрок не найдёт его там, где искал.
+	if _root == null:
+		return
+	var rooms := _find(_root, "RoomTrigger")
+	for npc: Npc in _find(_root, "Npc"):
+		for child in npc.get_children():
+			if not (child is Marker2D and String(child.name).begins_with("Errand")):
+				continue
+			var spot: Vector2 = npc.position + (child as Marker2D).position
+			var path := NpcRoutine.find_path(_root, npc.position, spot, npc)
+			check(not path.is_empty(), "'%s' не дойдёт до %s: путь перегорожен"
+				% [npc.employee_id, child.name])
+			for trigger: RoomTrigger in rooms:
+				var half := Vector2(trigger.size_in_tiles) * float(Grid.tile_size()) * 0.5
+				var area := Rect2(trigger.position - half, half * 2.0)
+				check(area.has_point(npc.position) == area.has_point(spot),
+					"'%s' уходит к %s из своего кабинета" % [npc.employee_id, child.name])
+
+
 # --- Помощники ----------------------------------------------------------------
 
 func _is_solid(walls: TileMapLayer, cell: Vector2i) -> bool:

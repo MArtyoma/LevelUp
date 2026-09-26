@@ -21,8 +21,18 @@
     python3 tools/art/make_sheet.py assets/sprites/npc/emp_kim_placeholder.png \\
         --front art_out/npc_kim/sprite_01.png --idle
 
+    # NPC, который ходит по кабинету и говорит по телефону (src/actors/npc/npc_routine.gd):
+    # лист на 6 рядов, см. NPC_ROWS ниже.
+    python3 tools/art/make_sheet.py assets/sprites/npc/emp_kim_placeholder.png --idle \\
+        --front art_out/npc_kim/sprite_01.png --side art_out/npc_kim_side/sprite_02.png \\
+        --back art_out/npc_kim_back/sprite_00.png --phone art_out/npc_kim_phone/sprite_03.png
+
 Ряды сверху вниз — вниз, влево, вправо, вверх (как в src/core/grid.gd);
 вид вправо — зеркало вида влево. Кадров в ряду — 4.
+
+У NPC с `--idle` и хотя бы одной из --side/--back/--phone рядов шесть (NPC_ROWS):
+первые четыре — те же направления (ряд 0 — стоит и дышит, он же печатает за столом),
+ряд 4 — шаг вниз, ряд 5 — говорит по телефону.
 Требует: pip install Pillow
 """
 
@@ -82,7 +92,10 @@ def stride(img: Image.Image) -> Image.Image:
     feet = box[3]
     top = feet - STRIDE_ROWS
     ink = min(_colors(img, 0, h), key=lambda c: sum(c[:3]))
-    pants = next(c for c in _colors(img, top, feet - 2) if c != ink)
+    # Чёрные брюки сливаются с контуром — тогда брюки чуть светлее контура,
+    # иначе две ноги в «ножницах» склеятся в одно пятно.
+    pants = next((c for c in _colors(img, top, feet - 2) if c != ink),
+                 tuple(min(255, v + 34) for v in ink[:3]) + (255,))
     shoe = next((c for c in _colors(img, feet - 2, feet) if c != ink), ink)
     cols = [x for x in range(w) if img.getpixel((x, top))[3] > 0]
     hip = (min(cols) + max(cols) + 1) / 2 if cols else w / 2
@@ -145,6 +158,63 @@ def row(pose: Image.Image, mode: str, side: bool = False) -> list:
     return [pose, lift(pose, True), pose, lift(pose, False)]
 
 
+def phone_pose(img: Image.Image) -> Image.Image:
+    """Поза «говорит по телефону» из передней: трубка у правого (для зрителя) уха
+    и кисть под ней. Кодом, а не нейросетью: на 16x32 нарисованная моделью трубка
+    теряется, а эта читается у всех сотрудников одинаково."""
+    out = img.copy()
+    box = img.getbbox()
+    if box is None:
+        return out
+    colors = _colors(img, box[1], box[3])
+    ink = min(colors, key=lambda c: sum(c[:3]))
+    # Кожа — самый частый светлый тёплый цвет в верхней половине (лицо).
+    face = [c for c in _colors(img, box[1], (box[1] + box[3]) // 2)
+            if c[0] > 150 and c[0] >= c[2] + 20]
+    skin = face[0] if face else (240, 200, 160, 255)
+    px = out.load()
+    # Трубка ложится на правую (для зрителя) щёку: снаружи у чиби-головы места
+    # нет, а на волосах тёмную трубку не видно. Щека — правый край кожи лица.
+    face_px = [(x, y) for y in range(box[1], (box[1] + box[3]) // 2)
+               for x in range(img.width) if px[x, y] == skin]
+    if not face_px:
+        return out
+    fx1 = max(x for x, _ in face_px)
+    fy0 = min(y for _, y in face_px)
+    fy1 = max(y for _, y in face_px)
+    x = fx1 - 1
+    top = fy0 + (fy1 - fy0) // 3
+    grey = (86, 108, 134, 255)                       # блик на трубке (slate)
+    for y in range(top, fy1 + 1):                    # трубка 2 px с контуром
+        for dx in (-1, 0, 1, 2):
+            if 0 <= x + dx < img.width:
+                px[x + dx, y] = ink
+    px[x, top] = grey
+    for y in range(fy1 + 1, fy1 + 3):                # кисть под трубкой
+        for dx, c in ((-1, ink), (0, skin), (1, skin), (2, ink)):
+            if 0 <= x + dx < img.width:
+                px[x + dx, y] = c
+    return out
+
+
+# Лист NPC, который ходит: ряды и что в них. Порядок читает src/actors/npc/npc_routine.gd.
+NPC_ROWS = ["стоит лицом вниз и дышит (печатает)", "шаг влево", "шаг вправо", "шаг вверх",
+            "шаг вниз", "говорит по телефону"]
+
+
+def npc_rows(front, side, back, phone, has_side):
+    walk_side = row(side, "walk", side=has_side)
+    return [
+        row(front, "idle"),
+        walk_side,
+        [ImageOps.mirror(f) for f in walk_side],
+        row(back, "walk"),
+        row(front, "walk"),
+        # Говорит: кадры 0 и 1 чередуются медленно — голова кивает в такт речи.
+        [phone, breathe(phone), phone, breathe(phone)],
+    ]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("out")
@@ -153,6 +223,8 @@ def main() -> None:
     ap.add_argument("--back", help="поза со спины; нет — берётся передняя")
     ap.add_argument("--still", action="store_true", help="без кадров шага, все клетки одинаковые")
     ap.add_argument("--idle", action="store_true", help="NPC: вместо шага — «дыхание» (кадр 1)")
+    ap.add_argument("--phone", help="NPC: поза с трубкой у уха (ряд 5, нужен --idle); "
+                    "'draw' — дорисовать трубку к передней позе кодом")
     a = ap.parse_args()
 
     front = Image.open(a.front).convert("RGBA")
@@ -163,13 +235,23 @@ def main() -> None:
         if im.size != front.size:
             raise SystemExit("размер позы %s %s не совпадает с передней %s" % (name, im.size, front.size))
 
-    sheet = Image.new("RGBA", (w * FRAMES, h * 4))
+    if a.phone == "draw":
+        phone = phone_pose(front)
+    else:
+        phone = Image.open(a.phone).convert("RGBA") if a.phone else None
+    if phone is not None and phone.size != front.size:
+        raise SystemExit("размер позы phone %s не совпадает с передней %s" % (phone.size, front.size))
     mode = "idle" if a.idle else "still" if a.still else "walk"
-    # Вид вправо — зеркало готовых кадров вида влево, а не отдельный шаг:
-    # «ножницы» рисуются в сторону взгляда, и зеркало разворачивает их сами.
-    rows = [row(front, mode), row(side, mode, side=a.side is not None),
-            [ImageOps.mirror(f) for f in row(side, mode, side=a.side is not None)],
-            row(back, mode)]
+    has_side = a.side is not None
+    if a.idle and (a.side or a.back or a.phone):
+        rows = npc_rows(front, side, back, phone or front, has_side)
+    else:
+        # Вид вправо — зеркало готовых кадров вида влево, а не отдельный шаг:
+        # «ножницы» рисуются в сторону взгляда, и зеркало разворачивает их сами.
+        rows = [row(front, mode), row(side, mode, side=has_side),
+                [ImageOps.mirror(f) for f in row(side, mode, side=has_side)],
+                row(back, mode)]
+    sheet = Image.new("RGBA", (w * FRAMES, h * len(rows)))
     for r, frames in enumerate(rows):
         for c, frame in enumerate(frames):
             sheet.paste(frame, (c * w, r * h))

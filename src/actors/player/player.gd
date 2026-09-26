@@ -55,6 +55,9 @@ var _floor_layers: Array[TileMapLayer] = []
 
 
 func _ready() -> void:
+	# По группе игрока находят те, кому важно, где он: сотрудник бросает дела,
+	# когда игрок подошёл (src/actors/npc/npc_routine.gd).
+	add_to_group("player")
 	_apply_grid()
 	GroundShadow.attach(self)
 	_interaction_area.area_entered.connect(_on_reachable_entered)

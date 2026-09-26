@@ -16,6 +16,7 @@ const SUITES := [
 	preload("res://tests/test_dialogue_runner.gd"),
 	preload("res://tests/test_dialogue_box.gd"),
 	preload("res://tests/test_game_ui.gd"),
+	preload("res://tests/test_npc_routine.gd"),
 	preload("res://tests/test_sound.gd"),
 	preload("res://tests/test_save_game.gd"),
 	preload("res://tests/test_grid.gd"),

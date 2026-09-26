@@ -209,6 +209,33 @@ func _add_npcs() -> void:
 				_walls.set_cell(cell + Vector2i(i - 1, 1), 0, T_WORKSTATION[i])
 		_root.add_child(npc)
 		npc.owner = _root
+		# Маркеры — после добавления: владельцем узла может быть только предок в дереве.
+		if entry.get("desk", false):
+			_add_errands(npc, entry["cell"])
+
+
+## Куда сотрудник отходит от стола (src/actors/npc/npc_routine.gd): под шкаф в углу
+## кабинета и под предмет отдела у верхней стены — клетка под ним, лицом вверх.
+func _add_errands(npc: Node2D, cell: Vector2i) -> void:
+	var room: Dictionary = {}
+	for candidate: Dictionary in ROOMS:
+		if (candidate["rect"] as Rect2i).has_point(cell):
+			room = candidate
+	if room.is_empty():
+		return
+	var rect: Rect2i = room["rect"]
+	var spots: Array[Vector2i] = [rect.position + Vector2i(0, 1)]   # под шкафом
+	for item: Array in room.get("decor", []):
+		var local: Vector2i = item[0]
+		if local.y == 0:
+			spots.append(rect.position + local + Vector2i(0, 1))
+			break
+	for i in spots.size():
+		var marker := Marker2D.new()
+		marker.name = "Errand%d" % i
+		marker.position = _center_of(spots[i]) - _center_of(cell)
+		npc.add_child(marker)
+		marker.owner = _root
 
 
 func _add_quest_object(cell: Vector2i) -> void:
