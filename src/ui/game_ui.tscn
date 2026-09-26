@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/game_ui.gd" id="1_ui"]
 
@@ -17,6 +17,11 @@ content_margin_bottom = 3.0
 [sub_resource type="LabelSettings" id="LabelSettings_hint"]
 font_size = 8
 outline_size = 3
+outline_color = Color(0.0784314, 0.101961, 0.145098, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_room"]
+font_size = 12
+outline_size = 4
 outline_color = Color(0.0784314, 0.101961, 0.145098, 1)
 
 [node name="GameUi" type="CanvasLayer"]
@@ -58,3 +63,27 @@ text = "Пропуск: уровень 1"
 [node name="List" type="VBoxContainer" parent="QuestPanel/Layout"]
 layout_mode = 2
 theme_override_constants/separation = 1
+
+[node name="RoomBanner" type="VBoxContainer" parent="."]
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -110.0
+offset_top = 10.0
+offset_right = 110.0
+offset_bottom = 44.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="RoomBanner"]
+layout_mode = 2
+horizontal_alignment = 1
+label_settings = SubResource("LabelSettings_room")
+
+[node name="Purpose" type="Label" parent="RoomBanner"]
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+label_settings = SubResource("LabelSettings_hint")
