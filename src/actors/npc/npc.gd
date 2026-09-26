@@ -54,6 +54,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	_apply_grid()
+	GroundShadow.attach(self)
 	add_to_group("interactable")
 	# NPC ничего не делает каждый кадр: он реагирует только на то, что к нему подошли.
 	# Двенадцать спящих узлов вместо двенадцати работающих — мелочь, которая

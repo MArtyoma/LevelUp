@@ -2,9 +2,15 @@
 """Лист ходьбы персонажа из трёх поз: спереди, сбоку (лицом влево) и со спины.
 
 Генератор (gen_sprite.py) рисует только отдельные позы, кадров анимации он не
-умеет. Здесь из позы делается простой шаг: в кадрах 1 и 3 поднимается то левая,
-то правая нога на пиксель, а корпус чуть приседает. Для 16x32 этого хватает,
-чтобы персонаж не «скользил» по полу; настоящие кадры нарисует художник.
+умеет. Здесь из позы делается простой шаг:
+
+* спереди и со спины — в кадрах 1 и 3 поднимается то левая, то правая нога
+  на пиксель, а корпус чуть приседает;
+* сбоку — в кадрах 1 и 3 ноги расходятся «ножницами»: передняя вперёд, задняя
+  (чуть темнее) назад, корпус на пиксель ниже. Без этого вид сбоку — самый
+  частый в коридоре — скользит по полу, как на коньках.
+
+Для 16x32 этого хватает; настоящие кадры нарисует художник.
 
     python3 tools/art/make_sheet.py assets/sprites/player_placeholder.png \\
         --front art_out/player/sprite_01.png \\
@@ -50,6 +56,71 @@ def lift(img: Image.Image, left: bool) -> Image.Image:
     return out
 
 
+STRIDE_ROWS = 6       # от бедра до пола, строк: столько ног перерисовывается в шаге сбоку
+STRIDE_REACH = 3      # на сколько пикселей стопа уходит вперёд и назад от бедра
+
+
+def _colors(img: Image.Image, top: int, bottom: int) -> list:
+    """Непрозрачные цвета полосы строк, от частого к редкому."""
+    counts = {}
+    px = img.load()
+    for y in range(top, bottom):
+        for x in range(img.width):
+            if px[x, y][3] > 0:
+                counts[px[x, y]] = counts.get(px[x, y], 0) + 1
+    return sorted(counts, key=counts.get, reverse=True)
+
+
+def stride(img: Image.Image) -> Image.Image:
+    """Кадр шага сбоку (лицом влево): ноги нарисованы заново «ножницами» —
+    передняя уходит вперёд, задняя (темнее) назад, у каждой ботинок и контур.
+    Цвета брюк, ботинок и контура берутся из самой позы. Корпус — на пиксель ниже."""
+    w, h = img.size
+    box = img.getbbox()
+    if box is None:
+        return img.copy()
+    feet = box[3]
+    top = feet - STRIDE_ROWS
+    ink = min(_colors(img, 0, h), key=lambda c: sum(c[:3]))
+    pants = next(c for c in _colors(img, top, feet - 2) if c != ink)
+    shoe = next((c for c in _colors(img, feet - 2, feet) if c != ink), ink)
+    cols = [x for x in range(w) if img.getpixel((x, top))[3] > 0]
+    hip = (min(cols) + max(cols) + 1) / 2 if cols else w / 2
+
+    def dark(c):
+        return tuple(int(v * .7) for v in c[:3]) + (255,)
+
+    layer = Image.new("RGBA", img.size)
+    lp = layer.load()
+    # Сначала задняя нога, потом передняя поверх.
+    for direction, tint in ((1, dark), (-1, lambda c: c)):
+        for y in range(STRIDE_ROWS):
+            t = y / (STRIDE_ROWS - 1)
+            x0 = round(hip - 1 + direction * STRIDE_REACH * t)
+            is_shoe = y >= STRIDE_ROWS - 2
+            width = 3 if is_shoe else 2
+            # Носок ботинка смотрит вперёд (влево), у обеих ног.
+            start = x0 - 1 if is_shoe else x0
+            for x in range(start, start + width):
+                if 0 <= x < w:
+                    lp[x, top + y] = tint(shoe if is_shoe else pants)
+    # Контур вокруг ног — там, где прозрачно; строка бедра остаётся открытой.
+    outline = layer.copy()
+    op = outline.load()
+    for y in range(top, feet):
+        for x in range(w):
+            if lp[x, y][3]:
+                continue
+            near = any(0 <= x + dx < w and top <= y + dy < feet and lp[x + dx, y + dy][3]
+                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            if near:
+                op[x, y] = ink
+    out = Image.new("RGBA", img.size)
+    out.alpha_composite(outline)
+    out.alpha_composite(img.crop((0, 0, w, top)), (0, 1))
+    return out
+
+
 def breathe(img: Image.Image) -> Image.Image:
     """Кадр вдоха-выдоха: всё, что выше ног, на пиксель ниже; ноги на месте."""
     w, h = img.size
@@ -63,12 +134,14 @@ def breathe(img: Image.Image) -> Image.Image:
     return out
 
 
-def row(pose: Image.Image, mode: str) -> list:
+def row(pose: Image.Image, mode: str, side: bool = False) -> list:
     if mode == "still":
         return [pose] * FRAMES
     if mode == "idle":
         # src/actors/npc/npc.gd листает кадры по кругу, медленно: вдох — один кадр из четырёх.
         return [pose, breathe(pose), pose, pose]
+    if side:
+        return [pose, stride(pose), pose, stride(pose)]
     return [pose, lift(pose, True), pose, lift(pose, False)]
 
 
@@ -90,11 +163,15 @@ def main() -> None:
         if im.size != front.size:
             raise SystemExit("размер позы %s %s не совпадает с передней %s" % (name, im.size, front.size))
 
-    rows = [front, side, ImageOps.mirror(side), back]
-    sheet = Image.new("RGBA", (w * FRAMES, h * len(rows)))
-    for r, pose in enumerate(rows):
-        mode = "idle" if a.idle else "still" if a.still else "walk"
-        for c, frame in enumerate(row(pose, mode)):
+    sheet = Image.new("RGBA", (w * FRAMES, h * 4))
+    mode = "idle" if a.idle else "still" if a.still else "walk"
+    # Вид вправо — зеркало готовых кадров вида влево, а не отдельный шаг:
+    # «ножницы» рисуются в сторону взгляда, и зеркало разворачивает их сами.
+    rows = [row(front, mode), row(side, mode, side=a.side is not None),
+            [ImageOps.mirror(f) for f in row(side, mode, side=a.side is not None)],
+            row(back, mode)]
+    for r, frames in enumerate(rows):
+        for c, frame in enumerate(frames):
             sheet.paste(frame, (c * w, r * h))
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     sheet.save(a.out)

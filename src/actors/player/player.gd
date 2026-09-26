@@ -19,8 +19,13 @@ extends CharacterBody2D
 ## * **Во время разговора игрок не ходит.** Проверяется одним флагом
 ##   `DialogueRunner.is_running`, а не отключением ввода в пяти местах.
 
-## Кадров анимации ходьбы в секунду.
-const ANIMATION_FPS := 8.0
+## Кадров анимации ходьбы в секунду. Подобрано под скорость (Grid.player_speed):
+## медленнее — ноги не успевают за телом, и персонаж едет по полу, как на коньках.
+const ANIMATION_FPS := 10.0
+
+## Быстрее этого (в долях обычной скорости) — идём; медленнее — стоим. Упёрся
+## в стену и жмёт кнопку — стоит, а не шагает на месте.
+const WALKING_THRESHOLD := 0.2
 
 ## Ряды в спрайт-листе: порядок обязан совпадать с tools/make_placeholder_art.py.
 const ROW_DOWN := 0
@@ -51,6 +56,7 @@ var _floor_layers: Array[TileMapLayer] = []
 
 func _ready() -> void:
 	_apply_grid()
+	GroundShadow.attach(self)
 	_interaction_area.area_entered.connect(_on_reachable_entered)
 	_interaction_area.area_exited.connect(_on_reachable_exited)
 	_find_floor_layers()
@@ -90,7 +96,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	_update_facing(direction)
-	_animate(direction, delta)
+	var moving := get_real_velocity().length() > _speed * WALKING_THRESHOLD
+	_animate(direction if moving else Vector2.ZERO, delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -196,6 +203,10 @@ func _animate(direction: Vector2, delta: float) -> void:
 		_animation_time = 0.0
 		_set_frame(0)
 		return
+	# С места — сразу шаг, а не ещё одна десятая секунды стойки: так кнопка
+	# отзывается мгновенно.
+	if _animation_time == 0.0:
+		_animation_time = 1.0
 	_animation_time += delta * ANIMATION_FPS
 	var column := int(_animation_time) % _sprite.hframes
 	# В листе нога поднята в нечётных кадрах; шаг слышен, когда она опускается.
