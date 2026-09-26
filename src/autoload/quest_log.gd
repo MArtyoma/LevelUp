@@ -121,6 +121,40 @@ func next_objective_text(quest_id: String) -> String:
 	return ""
 
 
+## Значок над головой сотрудника (src/actors/quest_marker.gd):
+##   MARK_STEP ("?") — у него закрывается текущий шаг взятого квеста;
+##   MARK_NEW  ("!") — он выдаёт квест, которого у игрока ещё нет;
+##   ""              — сейчас ему нечего предложить.
+##
+## Значки не пишутся в данных отдельно, а выводятся из диалога сотрудника: есть
+## вариант ответа, который сейчас виден и выдаёт квест, — значит «!». Так writer
+## нечего забыть обновить: переписал диалог — значки переставились сами.
+const MARK_NEW := "new"
+const MARK_STEP := "step"
+
+func marker_for(employee_id: String) -> String:
+	var dialogue := GameData.get_dialogue(GameData.dialogue_for_speaker(employee_id))
+	var result := ""
+	for node: Dictionary in dialogue.get("nodes", {}).values():
+		# Действия бывают у реплики (без условия) и у вариантов ответа (с условием).
+		var options: Array = [{"effects": node.get("effects", [])}]
+		options.append_array(node.get("choices", []))
+		for option: Dictionary in options:
+			if not check_requirement(option.get("requires", {})):
+				continue
+			for effect: Dictionary in option.get("effects", []):
+				match String(effect.get("type", "")):
+					"complete_objective":
+						# «?» важнее «!»: сначала закончи начатое.
+						if is_current_step("%s/%s" % [effect.get("quest", ""),
+								effect.get("objective", "")]):
+							return MARK_STEP
+					"start_quest":
+						if state_of(String(effect.get("quest", ""))) == State.NOT_STARTED:
+							result = MARK_NEW
+	return result
+
+
 func _finish_quest(quest_id: String) -> void:
 	_state[quest_id] = State.COMPLETED
 	var reward: Dictionary = GameData.get_quest(quest_id).get("reward", {})

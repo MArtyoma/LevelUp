@@ -43,6 +43,7 @@ extends Area2D
 @onready var _blocker_shape: CollisionShape2D = $Blocker/CollisionShape2D
 
 var _employee: Dictionary = {}
+var _marker: QuestMarker
 
 ## «Дыхание»: раз в столько секунд — следующий кадр первого ряда листа
 ## (tools/art/make_sheet.py --idle: вдох — один кадр из четырёх).
@@ -60,6 +61,7 @@ func _ready() -> void:
 	set_process(false)
 	set_physics_process(false)
 	_refresh()
+	_add_marker()
 
 
 ## Подгоняет размеры под текущий размер тайла (см. `src/core/grid.gd`).
@@ -132,6 +134,37 @@ func _refresh() -> void:
 ## Вызывается игроком, когда этот NPC стал ближайшим — или перестал им быть.
 func set_caption_visible(value: bool) -> void:
 	_caption.visible = value and show_caption
+	_place_marker()
+
+
+# --- Значок «!» / «?» над головой ------------------------------------------------
+
+## Значок пересчитывается по событиям квестов, а не каждый кадр. Конец разговора —
+## тоже событие: диалог мог поставить отметку (`set_flag`), от которой зависит,
+## какой вариант ответа виден, а значит, и значок.
+func _add_marker() -> void:
+	_marker = QuestMarker.new()
+	add_child(_marker)
+	_place_marker()
+	EventBus.quest_started.connect(_refresh_marker.unbind(1))
+	EventBus.quest_objective_completed.connect(_refresh_marker.unbind(2))
+	EventBus.quest_completed.connect(_refresh_marker.unbind(1))
+	EventBus.access_level_changed.connect(_refresh_marker.unbind(1))
+	EventBus.dialogue_finished.connect(_refresh_marker.unbind(2))
+	_refresh_marker()
+
+
+func _refresh_marker() -> void:
+	_marker.show_kind(QuestLog.marker_for(employee_id))
+
+
+## Над головой, а когда игрок подошёл и появилась подпись — над подписью.
+func _place_marker() -> void:
+	if _marker == null:
+		return
+	var bottom := Grid.caption_rect().position.y if _caption.visible \
+		else float(Grid.tile_size()) * 0.5 - float(Grid.character_frame().y)
+	_marker.position = Vector2(0.0, bottom - _marker.height() * 0.5)
 
 
 ## Проверка в редакторе: существует ли такой сотрудник в данных.

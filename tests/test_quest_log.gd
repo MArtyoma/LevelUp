@@ -88,3 +88,28 @@ func test_state_survives_save_and_load() -> void:
 	check(QuestLog.is_active("q_onboarding"), "квест не восстановился")
 	equals(QuestLog.next_objective_id("q_onboarding"), "obj_laptop", "шаг не восстановился")
 	check(QuestLog.has_flag("onboarding_taken"), "отметка не восстановилась")
+
+
+func test_markers_lead_through_onboarding() -> void:
+	# «!» — у кого взять задание, «?» — к кому идти сейчас. Проверяем по живым
+	# данным: значки выводятся из диалогов, отдельно их никто не пишет.
+	equals(QuestLog.marker_for("emp_mironova"), QuestLog.MARK_NEW,
+		"в начале над Мироновой должен быть «!»")
+	equals(QuestLog.marker_for("emp_kim"), "", "Ким заданий не выдаёт — значка быть не должно")
+
+	QuestLog.start_quest("q_onboarding")
+	QuestLog.set_flag("onboarding_taken")
+	equals(QuestLog.marker_for("emp_mironova"), "", "задание взято — «!» должен пропасть")
+
+	QuestLog.complete_objective("q_onboarding", "obj_docs")
+	equals(QuestLog.marker_for("emp_kim"), QuestLog.MARK_STEP,
+		"после документов «?» должен быть над Кимом")
+
+	QuestLog.complete_objective("q_onboarding", "obj_laptop")
+	equals(QuestLog.marker_for("emp_kim"), "", "ноутбук выдан — у Кима значка быть не должно")
+	equals(QuestLog.marker_for("emp_mironova"), QuestLog.MARK_STEP,
+		"за пропуском — обратно к Мироновой, над ней «?»")
+
+
+func test_unknown_employee_has_no_marker() -> void:
+	equals(QuestLog.marker_for("emp_такого_нет"), "", "у несуществующего сотрудника значок")

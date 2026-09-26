@@ -147,6 +147,35 @@ func test_every_quest_can_be_finished() -> void:
 					% [objective.get("text", objective.get("id", "?")), quest.get("title", "?")])
 
 
+func test_every_step_shows_where_to_go() -> void:
+	# Строже, чем «квест проходим»: в момент, когда шаг текущий, над кем-то на карте
+	# висит «?». Ловит вариант ответа, закрывающий шаг, но спрятанный условием,
+	# которое к этому моменту не выполняется: по данным квест проходим, а игрок
+	# ходит по офису и не знает, куда.
+	if _root == null:
+		return
+	var employees: Array[String] = []
+	for npc: Npc in _find(_root, "Npc"):
+		employees.append(npc.employee_id)
+	var objects: Array[String] = []
+	for object: QuestObject in _find(_root, "QuestObject"):
+		objects.append("%s/%s" % [object.quest_id, object.objective_id])
+
+	for quest: Dictionary in GameData.all_quests():
+		var quest_id := String(quest.get("id", ""))
+		QuestLog.reset()
+		QuestLog.start_quest(quest_id)
+		for objective: Dictionary in quest.get("objectives", []):
+			var step := "%s/%s" % [quest_id, objective.get("id", "")]
+			var marked := objects.has(step)
+			for employee_id in employees:
+				marked = marked or QuestLog.marker_for(employee_id) == QuestLog.MARK_STEP
+			check(marked, "на шаге «%s» квеста «%s» ни над кем на карте нет «?»"
+				% [objective.get("text", "?"), quest.get("title", "?")])
+			QuestLog.complete_objective(quest_id, String(objective.get("id", "")))
+	QuestLog.reset()
+
+
 func test_everyone_can_be_reached_on_foot() -> void:
 	# Мебель твёрдая. Поставили диван поперёк прохода — к сотруднику не подойти,
 	# и игра непроходима, хотя все данные в порядке. Идём от старта по клеткам,
