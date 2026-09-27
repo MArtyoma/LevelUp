@@ -2,7 +2,7 @@ extends Node
 
 ## Звуки и музыка.
 ##
-## Владелец: лид. Сами звуки — artist (`assets/sfx/`, `assets/music/`).
+## Владелец: lead. Сами звуки — artist (`assets/sfx/`, `assets/music/`).
 ##
 ## Как интерфейс, про игру знает только через EventBus: квесты не знают, что у них
 ## есть звук, а звук не лезет в квесты. Прямо сюда обращаются трое — окно разговора
@@ -239,7 +239,7 @@ func play_music(track: String) -> void:
 	var found := _variants(MUSIC_DIR, track, "ogg") if not track.is_empty() else []
 	if not found.is_empty():
 		stream = found[0]
-		# Петля включается здесь, а не галочкой в импорте: новый файл artist
+		# Петля включается здесь, а не галочкой в импорте: новый файл от artist
 		# зациклится сам, настраивать ничего не надо.
 		if stream is AudioStreamOggVorbis:
 			(stream as AudioStreamOggVorbis).loop = true

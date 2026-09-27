@@ -27,13 +27,13 @@
 
 ```
 data/          легенда компании, диалоги, квесты  → writer
-src/actors/    игрок, NPC, двери, предметы        → лид
-src/autoload/  системы: данные, квесты, диалоги   → лид и artist
-src/core/      размеры и проверка данных          → лид
+src/actors/    игрок, NPC, двери, предметы        → lead
+src/autoload/  системы: данные, квесты, диалоги   → lead и artist
+src/core/      размеры и проверка данных          → lead
 src/levels/    карта офиса                        → level designer
 src/ui/        интерфейс                          → artist
 assets/        тайлы, спрайты, портреты, звуки    → artist
-tests/         тесты                              → лид
+tests/         тесты                              → lead
 journal/       журнал команды                     → все
 tools/         утилиты: проверка, сборка, снимки
 docs/          как всё устроено и как это править
@@ -44,7 +44,7 @@ docs/          как всё устроено и как это править
 | Файл | Кому |
 |---|---|
 | [`docs/data-format.md`](docs/data-format.md) | **writer** — как писать легенду, диалоги и квесты. Кода знать не нужно |
-| [`docs/architecture.md`](docs/architecture.md) | лиду и artist — как устроена игра и почему именно так |
+| [`docs/architecture.md`](docs/architecture.md) | lead и artist — как устроена игра и почему именно так |
 | [`docs/conventions.md`](docs/conventions.md) | всем — правила работы с Git, кодом и сценами |
 | [`docs/art-pipeline.md`](docs/art-pipeline.md) | artist и ИИ-агентам — черновики спрайтов нейросетью (`tools/art/`) |
 | [`docs/audio-pipeline.md`](docs/audio-pipeline.md) | всем и ИИ-агентам — звуки и музыка: ретро-генератор и нейросети (`tools/audio/`) |
