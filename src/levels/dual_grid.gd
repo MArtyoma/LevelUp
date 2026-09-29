@@ -1,6 +1,17 @@
 @tool
 class_name DualGrid extends TileMapLayer
 
+## Добавляешь этот скрипт как узел (он в типах будет если DualGrid вобъёш)
+## создаёшь тайлсет на этот узел через инспектор (окно справа) 
+## в который добавляешь assets/tiles/base_tile.png как картинку атласа.
+## далее создаёшь как дочерний узел просто tilemap layer,
+## ставишь его как display_layer в этом узле
+## сдвигаешь его позицию на половину тайла (т.е. на (8,8))
+## ставишь как атлас тайлсета один из готовых атласов (например assets/tiles/office_tiles.png)
+## и должно быть готово.
+
+## тайлы в самих комнатах редачить только через tilemap DualGrid узла.
+
 const ATLAS_COORDS: Array[Vector2i] = [
 	Vector2i(0,3), Vector2i(1,3),
 	Vector2i(0,0), Vector2i(3,0),
@@ -23,7 +34,7 @@ const ATLAS_SIZE: Vector2i = Vector2i(4,4)
 @export var rng_seed: int:
 	set(value):
 		rng_seed = value
-		if !display_layer.is_node_ready(): return
+		if is_node_ready() or !display_layer: return
 		if randomize_tiles:
 			recalc_grid()
 @export var rng_weights: Dictionary[Vector2i,float]
