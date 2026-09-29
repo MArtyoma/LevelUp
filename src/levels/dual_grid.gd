@@ -34,7 +34,7 @@ const ATLAS_SIZE: Vector2i = Vector2i(4,4)
 @export var rng_seed: int:
 	set(value):
 		rng_seed = value
-		if is_node_ready() or !display_layer: return
+		if !is_node_ready() or !display_layer: return
 		if randomize_tiles:
 			recalc_grid()
 @export var rng_weights: Dictionary[Vector2i,float]
